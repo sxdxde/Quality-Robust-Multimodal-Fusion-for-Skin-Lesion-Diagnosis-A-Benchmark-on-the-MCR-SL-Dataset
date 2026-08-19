@@ -16,7 +16,7 @@ import torch.nn as nn
 from models.fusion import FUSION_REGISTRY, LateFusion
 from models.heads import AuxDiagnosisHead, BinaryHead, QualityHead
 from models.image_encoder import EfficientNetB0Encoder
-from models.metadata_encoder import MetadataEncoder
+from models.metadata_encoder import MetadataEncoder, build_metadata_encoder
 
 VARIANTS = ("image_only", "late_fusion", "channel_gated")
 
@@ -45,7 +45,8 @@ class MCRSLModel(nn.Module):
             self.fusion = None
             head_in_dim = image_dim
         else:
-            assert metadata_encoder is not None, "metadata_encoder required for fusion variants"
+            if metadata_encoder is None:
+                metadata_encoder = build_metadata_encoder()
             self.metadata_encoder = metadata_encoder
             fusion_cls = LateFusion if variant == "late_fusion" else FUSION_REGISTRY["channel_gated"]
             self.fusion = fusion_cls(

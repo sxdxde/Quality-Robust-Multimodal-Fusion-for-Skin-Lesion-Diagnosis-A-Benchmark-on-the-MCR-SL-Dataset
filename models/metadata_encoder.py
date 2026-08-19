@@ -78,3 +78,16 @@ class MetadataEncoder(nn.Module):
             parts.append(numerical_missing[f.name].unsqueeze(-1))
         x = torch.cat(parts, dim=-1)
         return self.mlp(x)
+
+
+def build_metadata_encoder(out_dim: int = 128, hidden_dim: int = 128, dropout: float = 0.2) -> MetadataEncoder:
+    """Factory using the verified field config in data/schema.py, so
+    train.py doesn't need to hand-specify cardinalities."""
+    from data.schema import CATEGORICAL_FIELDS, NUMERICAL_FIELDS
+
+    categorical_fields = [
+        CategoricalFieldSpec(name=name, cardinality=len(vocab))
+        for name, vocab in CATEGORICAL_FIELDS.items()
+    ]
+    numerical_fields = [NumericalFieldSpec(name=name) for name in NUMERICAL_FIELDS]
+    return MetadataEncoder(categorical_fields, numerical_fields, out_dim, hidden_dim, dropout)
