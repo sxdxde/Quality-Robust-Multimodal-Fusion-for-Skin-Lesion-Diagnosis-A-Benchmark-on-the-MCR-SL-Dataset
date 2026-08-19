@@ -1,0 +1,193 @@
+device: cuda
+config: {'variant': 'late_fusion', 'quality_aware': False, 'n_folds': 5, 'seed': 42, 'image_size': 224, 'batch_size': 16, 'epochs': 30, 'lr': 0.0001, 'weight_decay': 0.0001, 'aux_loss_weight': 0.4, 'quality_loss_weight': 0.15, 'focal_gamma': 0.0, 'train_on_all_dermoscopic_images': True, 'fusion_hidden_dim': 256, 'fusion_dropout': 0.3, 'metadata_hidden_dim': 128, 'metadata_out_dim': 128, 'num_aux_classes': 9, 'results_ledger_path': 'results/results_ledger.csv', 'checkpoint_dir': 'checkpoints', 'log_dir': 'logs', 'notes': ''}
+[build_lesion_table] 240 lesions total
+  binary task: 6 excluded (malignancy=='unknown')
+  aux 9-class task: 6 excluded (unified_diagnosis=='UNK' or missing)
+  histopath-confirmed: 28
+  lesions missing a quality rating: 2
+[build_image_index] 2394 raw image rows -> 2131 after lesion_id join -> 2131 after file-existence check (0 missing files dropped)
+fold 0: 5 subjects, 9.0 malignant lesions
+fold 1: 6 subjects, 9.0 malignant lesions
+fold 2: 16 subjects, 8.0 malignant lesions
+fold 3: 16 subjects, 8.0 malignant lesions
+fold 4: 16 subjects, 8.0 malignant lesions
+[_build_samples] 1/190 lesions had no usable image on disk for this split — dropped
+[fold 0] epoch 1/30 train_loss=1.7729 val_bacc=0.8021 val_auroc=0.9306
+[fold 0] epoch 2/30 train_loss=1.0101 val_bacc=0.6910 val_auroc=0.9375
+[fold 0] epoch 3/30 train_loss=0.5420 val_bacc=0.8021 val_auroc=0.9444
+[fold 0] epoch 4/30 train_loss=0.2991 val_bacc=0.6354 val_auroc=0.9306
+[fold 0] epoch 5/30 train_loss=0.1729 val_bacc=0.7222 val_auroc=0.9514
+[fold 0] epoch 6/30 train_loss=0.1474 val_bacc=0.5799 val_auroc=0.8958
+[fold 0] epoch 7/30 train_loss=0.1192 val_bacc=0.6910 val_auroc=0.9375
+[fold 0] epoch 8/30 train_loss=0.1442 val_bacc=0.5243 val_auroc=0.6944
+[fold 0] epoch 9/30 train_loss=0.1337 val_bacc=0.6111 val_auroc=0.9375
+[fold 0] epoch 10/30 train_loss=0.0827 val_bacc=0.6354 val_auroc=0.9028
+[fold 0] epoch 11/30 train_loss=0.1317 val_bacc=0.5556 val_auroc=0.8542
+[fold 0] epoch 12/30 train_loss=0.5898 val_bacc=0.7778 val_auroc=0.9375
+[fold 0] epoch 13/30 train_loss=0.1358 val_bacc=0.6910 val_auroc=0.9375
+[fold 0] epoch 14/30 train_loss=0.0717 val_bacc=0.7465 val_auroc=0.9514
+[fold 0] epoch 15/30 train_loss=0.0416 val_bacc=0.7465 val_auroc=0.9444
+[fold 0] epoch 16/30 train_loss=0.0393 val_bacc=0.7465 val_auroc=0.9375
+[fold 0] epoch 17/30 train_loss=0.0655 val_bacc=0.6667 val_auroc=0.9653
+[fold 0] epoch 18/30 train_loss=0.0331 val_bacc=0.5799 val_auroc=0.9236
+[fold 0] epoch 19/30 train_loss=0.0353 val_bacc=0.6910 val_auroc=0.8889
+[fold 0] epoch 20/30 train_loss=0.0212 val_bacc=0.5799 val_auroc=0.8889
+[fold 0] epoch 21/30 train_loss=0.0312 val_bacc=0.6910 val_auroc=0.9375
+[fold 0] epoch 22/30 train_loss=0.0290 val_bacc=0.6354 val_auroc=0.8889
+[fold 0] epoch 23/30 train_loss=0.0262 val_bacc=0.6354 val_auroc=0.9167
+[fold 0] epoch 24/30 train_loss=0.0180 val_bacc=0.7465 val_auroc=0.9375
+[fold 0] epoch 25/30 train_loss=0.0179 val_bacc=0.7778 val_auroc=0.9444
+[fold 0] epoch 26/30 train_loss=0.0203 val_bacc=0.7778 val_auroc=0.9375
+[fold 0] epoch 27/30 train_loss=0.0295 val_bacc=0.7465 val_auroc=0.9444
+[fold 0] epoch 28/30 train_loss=0.0240 val_bacc=0.7222 val_auroc=0.9306
+[fold 0] epoch 29/30 train_loss=0.0139 val_bacc=0.7465 val_auroc=0.9306
+[fold 0] epoch 30/30 train_loss=0.0101 val_bacc=0.7778 val_auroc=0.9444
+[fold 0] TEST accuracy=0.7600 balanced_accuracy=0.7153 auroc=0.8056
+[_build_samples] 1/163 lesions had no usable image on disk for this split — dropped
+[fold 1] epoch 1/30 train_loss=1.8468 val_bacc=0.7378 val_auroc=0.8293
+[fold 1] epoch 2/30 train_loss=1.0102 val_bacc=0.6753 val_auroc=0.9299
+[fold 1] epoch 3/30 train_loss=0.5780 val_bacc=0.7378 val_auroc=0.9421
+[fold 1] epoch 4/30 train_loss=0.4296 val_bacc=0.7256 val_auroc=0.9390
+[fold 1] epoch 5/30 train_loss=0.2223 val_bacc=0.7256 val_auroc=0.9299
+[fold 1] epoch 6/30 train_loss=0.1744 val_bacc=0.7378 val_auroc=0.9543
+[fold 1] epoch 7/30 train_loss=0.3499 val_bacc=0.7378 val_auroc=0.9360
+[fold 1] epoch 8/30 train_loss=0.1464 val_bacc=0.7134 val_auroc=0.9451
+[fold 1] epoch 9/30 train_loss=0.1498 val_bacc=0.7378 val_auroc=0.9360
+[fold 1] epoch 10/30 train_loss=0.0984 val_bacc=0.8003 val_auroc=0.9451
+[fold 1] epoch 11/30 train_loss=0.0640 val_bacc=0.7881 val_auroc=0.9451
+[fold 1] epoch 12/30 train_loss=0.0699 val_bacc=0.8384 val_auroc=0.9360
+[fold 1] epoch 13/30 train_loss=0.1277 val_bacc=0.8003 val_auroc=0.9390
+[fold 1] epoch 14/30 train_loss=0.0977 val_bacc=0.7378 val_auroc=0.9665
+[fold 1] epoch 15/30 train_loss=0.0447 val_bacc=0.7378 val_auroc=0.9421
+[fold 1] epoch 16/30 train_loss=0.0956 val_bacc=0.8003 val_auroc=0.9329
+[fold 1] epoch 17/30 train_loss=0.0642 val_bacc=0.7378 val_auroc=0.9512
+[fold 1] epoch 18/30 train_loss=0.0324 val_bacc=0.7378 val_auroc=0.9512
+[fold 1] epoch 19/30 train_loss=0.0248 val_bacc=0.7378 val_auroc=0.9482
+[fold 1] epoch 20/30 train_loss=0.0262 val_bacc=0.7378 val_auroc=0.9451
+[fold 1] epoch 21/30 train_loss=0.0197 val_bacc=0.7378 val_auroc=0.9482
+[fold 1] epoch 22/30 train_loss=0.0425 val_bacc=0.7378 val_auroc=0.9482
+[fold 1] epoch 23/30 train_loss=0.0635 val_bacc=0.6753 val_auroc=0.9421
+[fold 1] epoch 24/30 train_loss=0.0304 val_bacc=0.7256 val_auroc=0.9512
+[fold 1] epoch 25/30 train_loss=0.0281 val_bacc=0.7256 val_auroc=0.9573
+[fold 1] epoch 26/30 train_loss=0.0429 val_bacc=0.6006 val_auroc=0.9177
+[fold 1] epoch 27/30 train_loss=0.0496 val_bacc=0.7256 val_auroc=0.9573
+[fold 1] epoch 28/30 train_loss=0.0313 val_bacc=0.7881 val_auroc=0.9421
+[fold 1] epoch 29/30 train_loss=0.0251 val_bacc=0.7881 val_auroc=0.9360
+[fold 1] epoch 30/30 train_loss=0.0475 val_bacc=0.7881 val_auroc=0.9512
+[fold 1] TEST accuracy=0.8000 balanced_accuracy=0.7708 auroc=0.9028
+[_build_samples] 1/122 lesions had no usable image on disk for this split — dropped
+[_build_samples] 2/66 lesions had no usable image on disk for this split — dropped
+[fold 2] epoch 1/30 train_loss=1.7539 val_bacc=0.9259 val_auroc=0.9259
+[fold 2] epoch 2/30 train_loss=1.1145 val_bacc=0.9005 val_auroc=0.9282
+[fold 2] epoch 3/30 train_loss=0.6590 val_bacc=0.7662 val_auroc=0.9352
+[fold 2] epoch 4/30 train_loss=0.4464 val_bacc=0.8194 val_auroc=0.9398
+[fold 2] epoch 5/30 train_loss=0.3143 val_bacc=0.7755 val_auroc=0.9236
+[fold 2] epoch 6/30 train_loss=0.2276 val_bacc=0.8634 val_auroc=0.9259
+[fold 2] epoch 7/30 train_loss=0.1632 val_bacc=0.7569 val_auroc=0.8958
+[fold 2] epoch 8/30 train_loss=0.1153 val_bacc=0.7755 val_auroc=0.9144
+[fold 2] epoch 9/30 train_loss=0.0742 val_bacc=0.7315 val_auroc=0.9329
+[fold 2] epoch 10/30 train_loss=0.0809 val_bacc=0.8287 val_auroc=0.9514
+[fold 2] epoch 11/30 train_loss=0.0817 val_bacc=0.8380 val_auroc=0.9491
+[fold 2] epoch 12/30 train_loss=0.0649 val_bacc=0.8634 val_auroc=0.9583
+[fold 2] epoch 13/30 train_loss=0.0538 val_bacc=0.8194 val_auroc=0.9375
+[fold 2] epoch 14/30 train_loss=0.0287 val_bacc=0.8472 val_auroc=0.9583
+[fold 2] epoch 15/30 train_loss=0.0270 val_bacc=0.8472 val_auroc=0.9630
+[fold 2] epoch 16/30 train_loss=0.0423 val_bacc=0.8287 val_auroc=0.9306
+[fold 2] epoch 17/30 train_loss=0.0248 val_bacc=0.8380 val_auroc=0.9398
+[fold 2] epoch 18/30 train_loss=0.0288 val_bacc=0.8912 val_auroc=0.9491
+[fold 2] epoch 19/30 train_loss=0.0134 val_bacc=0.8287 val_auroc=0.9514
+[fold 2] epoch 20/30 train_loss=0.0205 val_bacc=0.8472 val_auroc=0.9352
+[fold 2] epoch 21/30 train_loss=0.0270 val_bacc=0.8819 val_auroc=0.9630
+[fold 2] epoch 22/30 train_loss=0.0314 val_bacc=0.8287 val_auroc=0.9560
+[fold 2] epoch 23/30 train_loss=0.0255 val_bacc=0.8727 val_auroc=0.9537
+[fold 2] epoch 24/30 train_loss=0.0210 val_bacc=0.8449 val_auroc=0.9421
+[fold 2] epoch 25/30 train_loss=0.0082 val_bacc=0.8727 val_auroc=0.9421
+[fold 2] epoch 26/30 train_loss=0.0142 val_bacc=0.8819 val_auroc=0.9375
+[fold 2] epoch 27/30 train_loss=0.0238 val_bacc=0.8727 val_auroc=0.9421
+[fold 2] epoch 28/30 train_loss=0.0153 val_bacc=0.8912 val_auroc=0.9375
+[fold 2] epoch 29/30 train_loss=0.0109 val_bacc=0.8912 val_auroc=0.9352
+[fold 2] epoch 30/30 train_loss=0.0265 val_bacc=0.9005 val_auroc=0.9421
+[fold 2] TEST accuracy=0.8367 balanced_accuracy=0.6509 auroc=0.7652
+[_build_samples] 2/72 lesions had no usable image on disk for this split — dropped
+[_build_samples] 2/66 lesions had no usable image on disk for this split — dropped
+[fold 3] epoch 1/30 train_loss=1.6803 val_bacc=0.6815 val_auroc=0.8165
+[fold 3] epoch 2/30 train_loss=0.9884 val_bacc=0.7238 val_auroc=0.8065
+[fold 3] epoch 3/30 train_loss=0.5788 val_bacc=0.7319 val_auroc=0.8024
+[fold 3] epoch 4/30 train_loss=0.3373 val_bacc=0.7560 val_auroc=0.7903
+[fold 3] epoch 5/30 train_loss=0.2203 val_bacc=0.6915 val_auroc=0.8367
+[fold 3] epoch 6/30 train_loss=0.1259 val_bacc=0.8024 val_auroc=0.8125
+[fold 3] epoch 7/30 train_loss=0.1282 val_bacc=0.8427 val_auroc=0.8105
+[fold 3] epoch 8/30 train_loss=0.0970 val_bacc=0.7782 val_auroc=0.8710
+[fold 3] epoch 9/30 train_loss=0.0630 val_bacc=0.8024 val_auroc=0.8468
+[fold 3] epoch 10/30 train_loss=0.0726 val_bacc=0.8024 val_auroc=0.8508
+[fold 3] epoch 11/30 train_loss=0.0353 val_bacc=0.8024 val_auroc=0.8528
+[fold 3] epoch 12/30 train_loss=0.0244 val_bacc=0.8185 val_auroc=0.8427
+[fold 3] epoch 13/30 train_loss=0.0280 val_bacc=0.8105 val_auroc=0.8569
+[fold 3] epoch 14/30 train_loss=0.0323 val_bacc=0.7944 val_auroc=0.8488
+[fold 3] epoch 15/30 train_loss=0.0751 val_bacc=0.7399 val_auroc=0.8810
+[fold 3] epoch 16/30 train_loss=0.0256 val_bacc=0.7540 val_auroc=0.8528
+[fold 3] epoch 17/30 train_loss=0.0267 val_bacc=0.7944 val_auroc=0.8790
+[fold 3] epoch 18/30 train_loss=0.0210 val_bacc=0.7944 val_auroc=0.8770
+[fold 3] epoch 19/30 train_loss=0.0158 val_bacc=0.7944 val_auroc=0.8690
+[fold 3] epoch 20/30 train_loss=0.0113 val_bacc=0.7782 val_auroc=0.8669
+[fold 3] epoch 21/30 train_loss=0.0113 val_bacc=0.7944 val_auroc=0.8669
+[fold 3] epoch 22/30 train_loss=0.0089 val_bacc=0.8024 val_auroc=0.8690
+[fold 3] epoch 23/30 train_loss=0.0172 val_bacc=0.8024 val_auroc=0.8690
+[fold 3] epoch 24/30 train_loss=0.0102 val_bacc=0.8024 val_auroc=0.8609
+[fold 3] epoch 25/30 train_loss=0.0053 val_bacc=0.8024 val_auroc=0.8669
+[fold 3] epoch 26/30 train_loss=0.0122 val_bacc=0.7944 val_auroc=0.8508
+[fold 3] epoch 27/30 train_loss=0.0137 val_bacc=0.7782 val_auroc=0.8931
+[fold 3] epoch 28/30 train_loss=0.0075 val_bacc=0.8327 val_auroc=0.8770
+[fold 3] epoch 29/30 train_loss=0.0180 val_bacc=0.8165 val_auroc=0.8690
+[fold 3] epoch 30/30 train_loss=0.0230 val_bacc=0.8024 val_auroc=0.8710
+[fold 3] TEST accuracy=0.8871 balanced_accuracy=0.8819 auroc=0.9630
+[_build_samples] 2/72 lesions had no usable image on disk for this split — dropped
+[fold 4] epoch 1/30 train_loss=1.6630 val_bacc=0.8264 val_auroc=0.9097
+[fold 4] epoch 2/30 train_loss=0.9069 val_bacc=0.8889 val_auroc=0.9861
+[fold 4] epoch 3/30 train_loss=0.4817 val_bacc=0.7778 val_auroc=0.9931
+[fold 4] epoch 4/30 train_loss=0.2588 val_bacc=0.7778 val_auroc=0.9792
+[fold 4] epoch 5/30 train_loss=0.2037 val_bacc=0.7222 val_auroc=0.9861
+[fold 4] epoch 6/30 train_loss=0.1523 val_bacc=0.8333 val_auroc=1.0000
+[fold 4] epoch 7/30 train_loss=0.1296 val_bacc=0.8889 val_auroc=1.0000
+[fold 4] epoch 8/30 train_loss=0.0818 val_bacc=0.8333 val_auroc=0.9722
+[fold 4] epoch 9/30 train_loss=0.0533 val_bacc=0.7778 val_auroc=0.9861
+[fold 4] epoch 10/30 train_loss=0.0471 val_bacc=0.8333 val_auroc=0.9861
+[fold 4] epoch 11/30 train_loss=0.0377 val_bacc=0.8333 val_auroc=0.9861
+[fold 4] epoch 12/30 train_loss=0.0447 val_bacc=0.8889 val_auroc=0.9931
+[fold 4] epoch 13/30 train_loss=0.0336 val_bacc=0.8333 val_auroc=0.9931
+[fold 4] epoch 14/30 train_loss=0.0236 val_bacc=0.8333 val_auroc=0.9722
+[fold 4] epoch 15/30 train_loss=0.0401 val_bacc=0.8576 val_auroc=0.9861
+[fold 4] epoch 16/30 train_loss=0.0174 val_bacc=0.8889 val_auroc=0.9931
+[fold 4] epoch 17/30 train_loss=0.0217 val_bacc=0.7778 val_auroc=0.9653
+[fold 4] epoch 18/30 train_loss=0.0151 val_bacc=0.7778 val_auroc=0.9583
+[fold 4] epoch 19/30 train_loss=0.0138 val_bacc=0.8333 val_auroc=0.9653
+[fold 4] epoch 20/30 train_loss=0.0203 val_bacc=0.8333 val_auroc=0.9653
+[fold 4] epoch 21/30 train_loss=0.0147 val_bacc=0.7778 val_auroc=0.9722
+[fold 4] epoch 22/30 train_loss=0.0149 val_bacc=0.7222 val_auroc=0.9236
+[fold 4] epoch 23/30 train_loss=0.0147 val_bacc=0.7778 val_auroc=0.9861
+[fold 4] epoch 24/30 train_loss=0.0105 val_bacc=0.8333 val_auroc=1.0000
+[fold 4] epoch 25/30 train_loss=0.0125 val_bacc=0.8333 val_auroc=0.9583
+[fold 4] epoch 26/30 train_loss=0.0073 val_bacc=0.8333 val_auroc=0.9792
+[fold 4] epoch 27/30 train_loss=0.0052 val_bacc=0.8333 val_auroc=0.9722
+[fold 4] epoch 28/30 train_loss=0.0091 val_bacc=0.8333 val_auroc=0.9931
+[fold 4] epoch 29/30 train_loss=0.0063 val_bacc=0.8333 val_auroc=0.9931
+[fold 4] epoch 30/30 train_loss=0.0130 val_bacc=0.8333 val_auroc=0.9653
+[fold 4] TEST accuracy=0.8714 balanced_accuracy=0.8185 auroc=0.8206
+
+=== Aggregated (mean +/- std across folds) ===
+accuracy_mean: 0.8311
+accuracy_std: 0.0465
+balanced_accuracy_mean: 0.7675
+balanced_accuracy_std: 0.0800
+macro_f1_mean: 0.7431
+macro_f1_std: 0.0459
+sensitivity_malignant_mean: 0.6444
+sensitivity_malignant_std: 0.1705
+specificity_mean: 0.8906
+specificity_std: 0.0190
+auroc_mean: 0.8514
+auroc_std: 0.0715
+confusion_matrix_sum:
+[[169  20]
+ [ 15  27]]
+total time: 4029.1s

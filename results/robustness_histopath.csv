@@ -1,0 +1,3 @@
+group,n,accuracy,mean_confidence
+histopathology_confirmed,28,0.75,0.7574118487627857
+panel_consensus_only,203,0.8669950738916257,0.8630201003990913

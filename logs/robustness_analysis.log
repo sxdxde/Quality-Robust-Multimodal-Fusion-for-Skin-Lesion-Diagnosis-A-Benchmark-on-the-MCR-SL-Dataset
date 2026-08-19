@@ -1,0 +1,64 @@
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:64: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+[build_lesion_table] 240 lesions total
+  binary task: 6 excluded (malignancy=='unknown')
+  aux 9-class task: 6 excluded (unified_diagnosis=='UNK' or missing)
+  histopath-confirmed: 28
+  lesions missing a quality rating: 2
+[build_image_index] 2394 raw image rows -> 2131 after lesion_id join -> 2131 after file-existence check (0 missing files dropped)
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:64: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:64: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:64: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:64: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:176: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+[analysis 1] N with both prediction and quality rating: 231 (report as-is, don't overstate — expect ~238)
+  tercile   n  accuracy  sensitivity_malignant
+0     low  85  0.776471               0.666667
+1     mid  93  0.913978               0.733333
+2    high  53  0.867925               0.500000
+[analysis 1] Spearman(rating, error) = -0.093 (p=0.158, N=231)
+[analysis 1] Spearman(rating, confidence) = 0.125 (p=0.058, N=231)
+[analysis 3] qualitative only — histo n=28 is too small for a confidence interval
+                      group    n  accuracy  mean_confidence
+0  histopathology_confirmed   28  0.750000         0.757412
+1      panel_consensus_only  203  0.866995         0.863020
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:176: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:176: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:176: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+/home/cs24d0010/mcrsl_project/robustness_analysis.py:176: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(ckpt_path, map_location=device))
+[analysis 4] metadata field importance (gradient x input), vs. dataset paper's Tables 3-4 significant fields
+                          field  ...  in_paper_significant_fields
+15  lesion_status_when_captured  ...                        False
+12             organ_transplant  ...                        False
+8                        sunbed  ...                        False
+11      h_skin_cancer_relatives  ...                        False
+13             immunosuppresion  ...                        False
+6              moles_bigger_5mm  ...                        False
+0                           sex  ...                         True
+9                      h_cancer  ...                        False
+3                  derived_from  ...                        False
+14           referral_diagnosis  ...                         True
+10                h_skin_cancer  ...                        False
+2          skin_reaction_to_sun  ...                        False
+4                 moles_body_18  ...                        False
+5                    moles_body  ...                        False
+7          sunburn_number_group  ...                        False
+1            natural_hair_color  ...                        False
+16               location_group  ...                         True
+17                          age  ...                        False
+19                       weight  ...                        False
+20                     diameter  ...                         True
+18                       height  ...                        False
+
+[21 rows x 3 columns]
+
+Note: analysis 2 (quality-aware training comparison) requires running train.py twice — once with --quality-aware and once without — then comparing their robustness_quality_tercile.csv outputs side by side (not computed here, since it's a between-run comparison, not a single-run analysis).

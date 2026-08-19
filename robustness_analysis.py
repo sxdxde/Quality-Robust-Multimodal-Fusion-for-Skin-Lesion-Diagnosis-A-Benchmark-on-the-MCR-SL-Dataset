@@ -61,7 +61,7 @@ def collect_oof_predictions(cfg_variant: str, quality_aware: bool, lesion_df, im
 
         ckpt_path = checkpoint_dir / f"{cfg_variant}_quality{quality_aware}_fold{test_fold}.pt"
         model = MCRSLModel(variant=cfg_variant, quality_aware=quality_aware).to(device)
-        model.load_state_dict(torch.load(ckpt_path, map_location=device))
+        model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=True))
         model.eval()
 
         for batch in test_loader:
@@ -146,10 +146,18 @@ def analysis_3_histopath_vs_panel(oof_df: pd.DataFrame, out_dir: Path):
 def analysis_4_metadata_importance(cfg_variant: str, quality_aware: bool, lesion_df, image_index_df,
                                     checkpoint_dir: Path, image_size: int, batch_size: int, seed: int,
                                     n_folds: int, device, out_dir: Path):
-    """Gradient x input sensitivity per metadata field, averaged across all
-    5 fold checkpoints' test sets. Compares against the dataset paper's own
-    Tables 3-4 significant fields: location_group, sex, referral_diagnosis,
-    diameter (all p<0.01)."""
+    """Ablation-by-field importance: for each metadata field, mask it to its
+    "unknown"/missing value and measure the resulting |delta binary logit|,
+    averaged over every test-fold sample. Compares against the dataset
+    paper's own Tables 3-4 significant fields: location_group, sex,
+    referral_diagnosis, diameter (all p<0.01).
+
+    Chosen over gradient x input: that metric sums over each categorical
+    field's whole embedding vector (12 dims) but a numeric field is a single
+    scalar, so categorical fields get a structurally larger raw score
+    regardless of true importance — not a fair comparison across field
+    types. Ablation's |delta logit| is directly comparable across both.
+    """
     valid_binary = lesion_df.dropna(subset=["binary_label"])
     subject_malignant_count = valid_binary.groupby("subject_id")["binary_label"].sum().to_dict()
     for sid in lesion_df["subject_id"].unique():
@@ -173,53 +181,45 @@ def analysis_4_metadata_importance(cfg_variant: str, quality_aware: bool, lesion
 
         ckpt_path = checkpoint_dir / f"{cfg_variant}_quality{quality_aware}_fold{test_fold}.pt"
         model = MCRSLModel(variant=cfg_variant, quality_aware=quality_aware).to(device)
-        model.load_state_dict(torch.load(ckpt_path, map_location=device))
+        model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=True))
         model.eval()
 
         for batch in test_loader:
             batch = move_batch(batch, device)
-            with torch.enable_grad():
-                cat_embeds = {}
-                for field in CATEGORICAL_FIELDS:
-                    emb = model.metadata_encoder.embeddings[field](batch["categorical"][field])
-                    emb = emb.detach().requires_grad_(True)
-                    cat_embeds[field] = emb
-                num_vals = {f: batch["numerical"][f].detach().requires_grad_(True) for f in NUMERICAL_FIELDS}
+            base_logits = model(batch["image"], batch["categorical"], batch["numerical"], batch["numerical_missing"])["binary_logits"]
 
-                parts = [cat_embeds[f.name] for f in model.metadata_encoder.categorical_fields]
-                for f in model.metadata_encoder.numerical_fields:
-                    parts.append(num_vals[f.name].unsqueeze(-1))
-                    parts.append(batch["numerical_missing"][f.name].unsqueeze(-1))
-                metadata_vec = model.metadata_encoder.mlp(torch.cat(parts, dim=-1))
+            for field, vocab in CATEGORICAL_FIELDS.items():
+                ablated_categorical = dict(batch["categorical"])
+                ablated_categorical[field] = torch.full_like(ablated_categorical[field], fill_value=len(vocab))
+                out = model(batch["image"], ablated_categorical, batch["numerical"], batch["numerical_missing"])
+                delta = (out["binary_logits"] - base_logits).abs()
+                field_scores[field].extend(delta.cpu().numpy().tolist())
 
-                pooled, feature_map = model.image_encoder(batch["image"])
-                fused = model.fusion(pooled, metadata_vec, feature_map)
-                logits = model.binary_head(fused)
-                logits.sum().backward()
-
-            for field in CATEGORICAL_FIELDS:
-                grad_x_input = (cat_embeds[field].grad * cat_embeds[field]).sum(dim=-1).abs()
-                field_scores[field].extend(grad_x_input.cpu().numpy().tolist())
             for field in NUMERICAL_FIELDS:
-                grad_x_input = (num_vals[field].grad * num_vals[field]).abs()
-                field_scores[field].extend(grad_x_input.cpu().numpy().tolist())
+                ablated_numerical = dict(batch["numerical"])
+                ablated_numerical[field] = torch.zeros_like(ablated_numerical[field])
+                ablated_missing = dict(batch["numerical_missing"])
+                ablated_missing[field] = torch.ones_like(ablated_missing[field])
+                out = model(batch["image"], batch["categorical"], ablated_numerical, ablated_missing)
+                delta = (out["binary_logits"] - base_logits).abs()
+                field_scores[field].extend(delta.cpu().numpy().tolist())
 
     summary = pd.DataFrame([
-        {"field": f, "mean_abs_grad_x_input": float(np.mean(scores)) if scores else float("nan")}
+        {"field": f, "mean_abs_logit_delta": float(np.mean(scores)) if scores else float("nan")}
         for f, scores in field_scores.items()
-    ]).sort_values("mean_abs_grad_x_input", ascending=False)
+    ]).sort_values("mean_abs_logit_delta", ascending=False)
 
     paper_significant = {"location_group", "sex", "referral_diagnosis", "diameter"}
     summary["in_paper_significant_fields"] = summary["field"].isin(paper_significant)
 
-    print("[analysis 4] metadata field importance (gradient x input), vs. dataset paper's Tables 3-4 significant fields")
+    print("[analysis 4] metadata field importance (ablation, |delta logit|), vs. dataset paper's Tables 3-4 significant fields")
     print(summary)
     summary.to_csv(out_dir / "robustness_metadata_importance.csv", index=False)
 
     fig, ax = plt.subplots(figsize=(7, 6))
     colors = ["tab:orange" if s else "tab:blue" for s in summary["in_paper_significant_fields"]]
-    ax.barh(summary["field"], summary["mean_abs_grad_x_input"], color=colors)
-    ax.set_xlabel("mean |grad x input|")
+    ax.barh(summary["field"], summary["mean_abs_logit_delta"], color=colors)
+    ax.set_xlabel("mean |delta logit| when field is ablated")
     ax.set_title("Metadata field importance (orange = paper's significant fields)")
     fig.tight_layout()
     fig.savefig(out_dir / "robustness_metadata_importance.png", dpi=150)
