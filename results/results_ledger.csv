@@ -1,0 +1,1 @@
+timestamp,variant,quality_aware,fold,n_folds,seed,accuracy,balanced_accuracy,macro_f1,sensitivity_malignant,specificity,auroc,notes

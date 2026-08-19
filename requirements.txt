@@ -1,0 +1,14 @@
+# Reference only — the remote `brats` conda env already has nearly all of
+# this (torch, torchvision, timm, scikit-learn, pandas, matplotlib, seaborn).
+# The only genuine gap is zenodo_get, and that's installed standalone by
+# scripts/download_dataset.sh, not into this list, to avoid touching the
+# shared env's resolved versions. Do not `pip install -r` this against the
+# shared env — diff against `pip list` first per CLAUDE.md.
+torch
+torchvision
+timm==0.9.2
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
