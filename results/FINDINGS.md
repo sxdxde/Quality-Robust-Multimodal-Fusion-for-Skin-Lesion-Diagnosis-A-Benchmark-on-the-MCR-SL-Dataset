@@ -1,6 +1,6 @@
 # MCR-SL Findings (working notes for the INDICON 2026 write-up)
 
-Last updated: 2026-08-20. SAM(AdamW) run pending — update this file once it lands.
+Last updated: 2026-08-20. All planned experiments complete, including SAM(AdamW).
 
 ## Task & protocol
 Binary malignant vs. non-malignant lesion classification, MCR-SL dataset (240 lesions,
@@ -33,38 +33,56 @@ implemented, does not help robustness here.
 
 | run | accuracy | balanced_acc | macro_F1 | sensitivity | specificity | AUROC | retrain? |
 |---|---|---|---|---|---|---|---|
-| **channel_gated_tta_multiimage** | 0.857 | **0.815** | 0.787 | 0.719 | 0.910 | **0.908** | no (eval-only) |
+| **channel_gated_sam_adamw_tta** | 0.861 | **0.822** | 0.789 | 0.719 | 0.925 | 0.908 | yes + eval-only stack |
+| channel_gated_tta_multiimage | 0.857 | 0.815 | 0.787 | 0.719 | 0.910 | 0.908 | no (eval-only) |
 | channel_gated_multiimage | 0.854 | 0.813 | 0.784 | 0.719 | 0.907 | 0.906 | no (eval-only) |
-| channel_gated_focal (γ=2) | **0.858** | 0.809 | 0.779 | 0.694 | **0.923** | 0.877 | yes |
+| channel_gated_sam_adamw (SAM+AdamW alone) | 0.859 | 0.811 | 0.785 | 0.694 | 0.927 | 0.904 | yes |
+| channel_gated_sam_adamw_tta_multiimage | 0.856 | 0.810 | 0.780 | 0.694 | 0.925 | **0.915** | yes + eval-only stack |
+| channel_gated_focal (γ=2) | 0.858 | 0.809 | 0.779 | 0.694 | 0.923 | 0.877 | yes |
+| channel_gated_sam_adamw_multiimage | 0.851 | 0.800 | 0.773 | 0.672 | **0.928** | 0.917 | yes + eval-only stack |
 | channel_gated_preprocessed | 0.828 | 0.793 | 0.753 | **0.736** | 0.851 | 0.875 | yes |
 | channel_gated_tta | 0.841 | 0.788 | 0.765 | 0.672 | 0.904 | 0.897 | no (eval-only) |
 | channel_gated_contrastive | 0.812 | 0.771 | 0.734 | 0.669 | 0.872 | 0.873 | yes |
 | channel_gated_optimizerv2 (AdamW+cosine+discriminative-LR) | 0.822 | 0.757 | 0.731 | 0.661 | 0.853 | 0.845 | yes |
-| channel_gated_sam_adamw (SAM+AdamW) | *pending* | | | | | | yes (~2x slower) |
 
 ### What actually moved the needle, and what didn't
-- **Multi-image test-time averaging is the single biggest, most reliable win**, and it's
-  free — no retraining, just averaging predictions across all of a lesion's dermoscopic
-  images at eval time instead of using only the `diagnosis_image_id` image. TTA (flip
-  averaging) adds a small amount on top. This is legitimate variance reduction (doesn't
-  touch labels/training), not overfitting.
+- **SAM+AdamW, combined with TTA, is the overall best config** — 0.822 balanced accuracy,
+  0.908 AUROC. SAM alone (0.811 bal. acc) already beat every other single-model config
+  except the two eval-time-only tricks; seeking flatter minima on a small, noisy dataset
+  paid off, consistent with the motivation for trying it. Notably ~2x-compute concern
+  didn't materialize in wall-clock time — this run finished in the same ~65 min as the
+  others, suggesting the pipeline was data-loading-bound, not backward-pass-bound, at this
+  model size.
+- **Multi-image test-time averaging is a big, reliable, free win on its own** (no
+  retraining) — but it does **not** stack cleanly on top of SAM+TTA: adding it to
+  `channel_gated_sam_adamw_tta` *reduced* balanced accuracy (0.822 → 0.810) even though it
+  pushed AUROC to the dataset-wide high (0.915). The eval-time tricks are not strictly
+  additive — worth a line in the paper rather than assuming "more tricks = always better."
 - **Focal loss and preprocessing trade off in opposite, interpretable directions**: focal
   loss buys accuracy/specificity at sensitivity's cost (fewer false alarms, more missed
   malignancies); dermoscopy preprocessing (hair removal + color normalization) gives the
   *highest sensitivity of any variant* (0.736) — plausible, since hair/lighting artifacts
   are exactly the kind of quality issue that could obscure the features that matter for
   catching malignant lesions. Ties in naturally with the quality-robustness theme.
-- **Contrastive loss, the alternate optimizer, and quality-aware training all
-  underperformed the plain baseline.** Three independent negative results pointing the
-  same direction: at N≈234, adding model/objective complexity doesn't reliably help and
-  sometimes hurts, while simple prediction-averaging at eval time reliably does. This is
-  a genuinely interesting discussion-section point — arguably more interesting than
-  "our method wins."
+- **Contrastive loss, the plain-AdamW/cosine/discriminative-LR optimizer, and
+  quality-aware training all underperformed the plain baseline.** Three independent
+  negative results pointing the same direction: at N≈234, adding model/objective
+  complexity doesn't reliably help and sometimes hurts, while simple prediction-averaging
+  (and, it turns out, sharpness-aware optimization) reliably does. Genuinely interesting
+  discussion-section material — arguably more interesting than "our method wins."
 
 ### Does anything cross 0.9?
-AUROC does, for the best config (0.906–0.908 mean) — but balanced accuracy tops out at
-0.815 and sensitivity at 0.736. Given ~40 malignant lesions total, that's a real ceiling,
-not a tuning gap — don't chase it further by tuning against these numbers.
+AUROC does, comfortably now — best config 0.915, several others 0.90–0.91. Balanced
+accuracy tops out at 0.822 and sensitivity at 0.736. Given ~40 malignant lesions total,
+that ceiling on balanced accuracy/sensitivity is real, not a tuning gap — don't chase it
+further by tuning against these numbers.
+
+### Literature context (see prior discussion this session)
+Closest comparator, PAD-UFES-20 (metadata+image fusion, ~1,641 lesions — ~7x our N): best
+published multimodal balanced accuracy there is 0.832. Our best (0.822) is within a hair
+of that despite ~7x less data — a legitimate, citable line for the paper. HAM10000/PH2
+headline numbers (accuracy 0.88–0.99) are not fair comparators — 40x+ more data and/or an
+easier task and/or looser evaluation rigor; don't cite them without heavy caveats.
 
 ## Robustness analyses (the actual novelty)
 
@@ -92,14 +110,19 @@ not a tuning gap — don't chase it further by tuning against these numbers.
 
 For a **first benchmark on a brand-new, 240-lesion dataset**, yes — this is a respectable,
 defensible result, not a suspiciously perfect one (which would suggest leakage) and not a
-weak one either. AUROC ~0.88–0.91 and balanced accuracy ~0.78–0.82 sit in a believable
+weak one either. AUROC ~0.88–0.92 and balanced accuracy ~0.78–0.82 sit in a believable
 range for dermoscopy malignancy classification without the benefit of a large pretraining
-corpus in-domain. The more clinically relevant number — sensitivity on the malignant class,
-~0.67–0.74 depending on config — is moderate, and worth flagging plainly as a limitation
-(missing roughly a quarter to a third of malignant lesions) rather than downplaying it.
-The paper's real strength is not "we beat some accuracy number," it's the robustness
-analyses this dataset uniquely enables (see above) — that's the honest novelty pitch for
-INDICON's biomedical imaging track (see prior discussion in this session).
+corpus in-domain, and land within a hair of the best published PAD-UFES-20 multimodal
+result (0.832 bal. acc) despite ~7x less data (see Literature context above). The more
+clinically relevant number — sensitivity on the malignant class, ~0.67–0.74 depending on
+config — is moderate, and worth flagging plainly as a limitation (missing roughly a
+quarter to a third of malignant lesions) rather than downplaying it. The paper's real
+strength is not "we beat some accuracy number," it's the robustness analyses this dataset
+uniquely enables (see above) — that's the honest novelty pitch for INDICON's biomedical
+imaging track (see prior discussion in this session). Note also that "SOTA" is a hollow
+claim here in the literal sense — we're the first and only benchmark on MCR-SL, so there
+is no prior number to have beaten; lead with "first benchmark + robustness analysis," not
+"SOTA," in the abstract/intro.
 
 ## Known data/pipeline caveats (for the methods section)
 - 21 `lesion_id`s in `image.xlsx` (263 images) have no matching row in `lesion.xlsx` and
@@ -117,8 +140,12 @@ INDICON's biomedical imaging track (see prior discussion in this session).
 ## Not yet tried / explicitly out of scope this sprint
 - Optional stretch ablation: text-templated metadata + channel-gated fusion (CLAUDE.md
   §Optional stretch ablation) — only if time allows near the end.
-- Combining the winning eval-time tricks (multi-image + TTA) on top of focal loss or
-  preprocessing, rather than only against the plain baseline — worth one more run if time
-  allows, likely the actual best achievable config.
+- Combining the winning eval-time tricks on top of focal loss or preprocessing (only ever
+  tested against plain baseline and SAM) — untested combination, possible but not run.
 - Broader SAM rho sweep, ASAM variant — one fixed rho=0.05 tested, no sweep (would be
   tuning against final numbers).
+- **Decided:** robustness analyses 1/3/4 stay on `channel_gated` (CLAUDE.md's designated
+  main method), not re-run against the empirically-better `channel_gated_sam_adamw_tta`.
+  Keeps the paper's structure clean — core ablation matrix + robustness analysis on the
+  designated method as one section, the extended experiments (SAM, TTA, focal, etc.) as a
+  separate follow-up results section, not conflated into "the main result."
