@@ -49,7 +49,7 @@ This paper has made the following contributions.
 \section{Literature Review}
 Image-only dermoscopic classification has been studied extensively since Esteva \emph{et al.} \cite{esteva2017} have shown that a single convolutional network can match dermatologist performance on a large, curated archive, with HAM10000 \cite{ham10000} subsequently becoming a standard benchmark for this line of work. These studies have generally treated the image as the sole input and have not incorporated structured clinical context.
 
-Metadata fusion has emerged as a distinct thread. Pacheco and Krohling \cite{metablock} have proposed the Metadata Processing Block, an attention-based mechanism that has reweighted image features using patient metadata, and have evaluated it on PAD-UFES-20 \cite{paduf20}, a dataset of 2298 clinical images and 1641 lesions with twenty-six metadata fields collected via smartphone. This is the closest comparable dataset to MCR-SL in problem shape, real-world patient metadata paired with real-world images, and we have used it as our primary point of external comparison (Section IV-F). Our channel-gated fusion module has drawn its mechanism from Squeeze-and-Excitation networks \cite{se}, which have reweighted a convolutional feature map's channels using a signal derived from the feature map itself; our variant has derived that signal from patient metadata instead.
+Metadata fusion has emerged as a distinct thread. Pacheco and Krohling \cite{metablock} have proposed the Metadata Processing Block, an attention-based mechanism that has reweighted image features using patient metadata, and have evaluated it on PAD-UFES-20 \cite{paduf20}, a dataset of 2298 clinical images and 1641 lesions with twenty-six metadata fields collected via smartphone. This is the closest comparable dataset to MCR-SL in problem shape, real-world patient metadata paired with real-world images, and we have used it as our primary point of external comparison (Section~\ref{sec:comparison}). Our channel-gated fusion module has drawn its mechanism from Squeeze-and-Excitation networks \cite{se}, which have reweighted a convolutional feature map's channels using a signal derived from the feature map itself; our variant has derived that signal from patient metadata instead.
 
 Cross-domain and few-shot medical imaging work has separately explored what happens when a training distribution and a deployment distribution have diverged, but has rarely operationalized image quality as an explicit, expert-rated variable available at training time. MCR-SL's per-image quality rating has made this operationalization possible for skin lesion classification for the first time, to our knowledge.
 
@@ -62,7 +62,7 @@ Fig.~\ref{fig:arch} summarizes the architecture. This paper has proposed a chann
 \subsection{Architecture}
 The image encoder is an ImageNet pretrained EfficientNet-B0 \cite{efficientnet,imagenet}, which has produced a 1280-dimensional pooled feature vector and the corresponding last convolutional feature map for every input image. The metadata encoder has processed sixteen categorical fields, each through its own learned embedding with an explicit unknown category reserved for missing values, and four numeric fields, age, height, weight, and lesion diameter, each z-score normalized using training-fold statistics only and paired with a missingness indicator bit; the concatenated representation has passed through a two-layer multilayer perceptron to a 128-dimensional metadata vector. Fields with a constant value across all subjects or with unusably sparse, free-text encodings have been excluded from the metadata encoder rather than imputed, consistent with the dataset's own stated policy of leaving missingness to end users.
 
-Two fusion strategies have been compared. The late-fusion baseline has concatenated the pooled image vector with the metadata vector before a multilayer perceptron classifier. The channel-gated fusion method, the paper's main method, has instead passed the metadata vector through a linear layer and a sigmoid activation to produce a 1280-dimensional gate, and has multiplied this gate elementwise against the image encoder's convolutional feature map, channel by channel, before global pooling; this has conditioned which visual channels the classifier has attended to on the patient's metadata rather than on the image alone. A binary head has classified malignant versus non-malignant status using weighted binary cross-entropy, with class weights recomputed from each training fold's own malignant ratio. An auxiliary nine-class head has classified the unified diagnosis label at a downweighted loss contribution and has been reported as an exploratory result only, given that several of the nine classes have contained fewer than ten lesions. A quality-aware variant has attached a further regression head predicting the mean expert quality rating from the same fused representation, at a low loss weight, to test whether explicit quality supervision has improved robustness to quality variation (Section IV-E).
+Two fusion strategies have been compared. The late-fusion baseline has concatenated the pooled image vector with the metadata vector before a multilayer perceptron classifier. The channel-gated fusion method, the paper's main method, has instead passed the metadata vector through a linear layer and a sigmoid activation to produce a 1280-dimensional gate, and has multiplied this gate elementwise against the image encoder's convolutional feature map, channel by channel, before global pooling; this has conditioned which visual channels the classifier has attended to on the patient's metadata rather than on the image alone. A binary head has classified malignant versus non-malignant status using weighted binary cross-entropy, with class weights recomputed from each training fold's own malignant ratio. An auxiliary nine-class head has classified the unified diagnosis label at a downweighted loss contribution and has been reported as an exploratory result only, given that several of the nine classes have contained fewer than ten lesions. A quality-aware variant has attached a further regression head predicting the mean expert quality rating from the same fused representation, at a low loss weight, to test whether explicit quality supervision has improved robustness to quality variation (Section~\ref{sec:robustness}).
 
 \begin{figure}[t]
 \centering
@@ -70,35 +70,41 @@ Two fusion strategies have been compared. The late-fusion baseline has concatena
   box/.style={draw, rounded corners=2pt, align=center, minimum height=0.8cm, minimum width=2.3cm, font=\scriptsize, fill=blue!6},
   gbox/.style={draw, rounded corners=2pt, align=center, minimum height=0.8cm, minimum width=2.3cm, font=\scriptsize, fill=orange!12},
   hbox/.style={draw, rounded corners=2pt, align=center, minimum height=0.8cm, minimum width=2.3cm, font=\scriptsize, fill=green!10},
+  outbox/.style={draw, rounded corners=2pt, align=center, minimum height=0.8cm, minimum width=2.3cm, font=\scriptsize, fill=red!8, thick},
   opnode/.style={draw, circle, font=\small, inner sep=1pt},
   arr/.style={-Stealth, thick}
 ]
-\node[box] (img) at (0,7.4) {Dermoscopic image};
-\node[box] (meta) at (5.2,7.4) {Patient metadata\\(22 fields)};
+\node (img) at (0,8.0) {\includegraphics[width=1.7cm]{figures/examples/L0006_I_D00019.jpg}};
+\node[draw, thick, fit=(img), inner sep=1pt] {};
+\node[font=\tiny, below=0.02cm of img] {Dermoscopic image (example)};
+\node[box, minimum width=2.3cm] (meta) at (5.2,8.0) {Metadata (example):\\age 65, male, torso,\\referral: BCC};
 
-\node[box] (enc) at (0,5.8) {EfficientNet-B0\\encoder};
-\node[box] (menc) at (5.2,5.8) {Categorical embed.\\+ numeric MLP};
+\node[box] (enc) at (0,5.9) {EfficientNet-B0\\encoder};
+\node[box] (menc) at (5.2,5.9) {Categorical embed.\\+ numeric MLP};
 
-\node[gbox] (gate) at (5.2,4.2) {Linear + sigmoid\\channel gate};
+\node[gbox] (gate) at (5.2,4.3) {Linear + sigmoid\\channel gate};
 
-\node[opnode] (mult) at (2.6,2.6) {$\otimes$};
-\node[box] (pool) at (2.6,1.0) {Gated global pool};
+\node[opnode] (mult) at (2.6,2.7) {$\otimes$};
+\node[box] (pool) at (2.6,1.1) {Gated global pool};
 
-\node[hbox] (bin) at (0,-0.8) {Binary head\\(malignant)};
-\node[hbox] (aux) at (2.6,-0.8) {Aux.\ head\\(9-class)};
-\node[hbox] (qual) at (5.2,-0.8) {Quality head\\(optional)};
+\node[hbox] (bin) at (0,-0.7) {Binary head\\(malignant)};
+\node[hbox] (aux) at (2.6,-0.7) {Aux.\ head\\(9-class)};
+\node[hbox] (qual) at (5.2,-0.7) {Quality head\\(optional)};
+
+\node[outbox] (out) at (0,-2.4) {Output (example):\\$P$(malignant){=}1.00\\$\rightarrow$ Malignant (correct)};
 
 \draw[arr] (img) -- (enc);
 \draw[arr] (meta) -- (menc);
 \draw[arr] (menc) -- (gate);
-\draw[arr] (enc.south) -- ++(0,-1.0) -| (mult.north);
+\draw[arr] (enc.south) -- ++(0,-1.1) -| (mult.north);
 \draw[arr] (gate.west) -| (mult.north);
 \draw[arr] (mult) -- (pool);
-\draw[arr] (pool.south) -- ++(0,-0.55) -| (bin.north);
+\draw[arr] (pool.south) -- ++(0,-0.45) -| (bin.north);
 \draw[arr] (pool.south) -- (aux.north);
-\draw[arr] (pool.south) -- ++(0,-0.55) -| (qual.north);
+\draw[arr] (pool.south) -- ++(0,-0.45) -| (qual.north);
+\draw[arr] (bin) -- (out);
 \end{tikzpicture}
-\caption{Channel-gated fusion architecture. The metadata vector is projected to a per-channel sigmoid gate ($\otimes$: elementwise multiplication) that reweights the image encoder's convolutional feature map before pooling and classification.}
+\caption{Channel-gated fusion architecture, with one real example flowing through: lesion L0006, a histopathology-confirmed basal cell carcinoma. The metadata vector is projected to a per-channel sigmoid gate ($\otimes$: elementwise multiplication) that reweights the image encoder's convolutional feature map before pooling and classification. Full example set, including a misclassified case, in Table~\ref{tab:examples}.}
 \label{fig:arch}
 \end{figure}
 
@@ -133,6 +139,30 @@ Unified diagnosis classes & 9 \\
 \hline
 \end{tabular}
 \end{table}
+
+\subsection{Example Inputs and Outputs}
+Table~\ref{tab:examples} shows the model's actual input and output for four real lesions, one from each confusion-matrix outcome, selected by a fixed rule rather than chosen to flatter the model: within each outcome category, the alphabetically first lesion identifier with a usable diagnosis image. This deliberately surfaces a real failure case, L0065, a malignant lesion referred as a voluntary sample and predicted non-malignant at a probability of 0.005, alongside three correctly classified lesions.
+
+\begin{table*}[t]
+\caption{Example inputs and outputs, channel-gated method, one real lesion per confusion-matrix outcome (not cherry-picked; see selection rule above)}
+\label{tab:examples}
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|c|l|l|c|l|l|c|}
+\hline
+\textbf{Outcome} & \textbf{Image} & \textbf{Age/Sex/Site} & \textbf{Referral dx.} & \textbf{Quality} & \textbf{Ground truth} & \textbf{Predicted} & \textbf{$P$(malig.)} \\
+\hline
+True positive & \includegraphics[width=1.5cm]{figures/examples/L0006_I_D00019.jpg} & 65/Male/Torso & BCC & 3.0/10 & Malignant & Malignant & 1.000 \\
+\hline
+True negative & \includegraphics[width=1.5cm]{figures/examples/L0001_I_D00000.jpg} & 58/Male/Back & Melanoma & 3.0/10 & Non-malignant & Non-malignant & 0.312 \\
+\hline
+False negative & \includegraphics[width=1.5cm]{figures/examples/L0065_I_D00173.jpg} & 55/Female/Arms & Voluntary sample & 4.7/10 & Malignant & Non-malignant & 0.005 \\
+\hline
+False positive & \includegraphics[width=1.5cm]{figures/examples/L0002_I_D00003.jpg} & 58/Male/Back & Voluntary sample & 6.7/10 & Non-malignant & Malignant & 0.810 \\
+\hline
+\end{tabular}
+\end{table*}
 
 \subsection{Evaluation Metrics}
 We have reported accuracy, balanced accuracy, macro-averaged F1, sensitivity on the malignant class, specificity, and area under the receiver operating characteristic curve, AUROC, at every shot of evaluation, aggregated across the five test folds as mean and standard deviation. Balanced accuracy has been used for checkpoint selection and as the primary comparison metric, since the malignant class has represented a minority of usable lesions.
@@ -266,6 +296,7 @@ Height & 0.0007 \\
 \end{table}
 
 \subsection{Comparison with the Literature}
+\label{sec:comparison}
 Table~\ref{tab:comparison} situates the results against the closest comparable published work. PAD-UFES-20 \cite{paduf20,metablock} is the nearest comparator in problem shape, real-world clinical images paired with real patient metadata, and its strongest published multimodal balanced accuracy has been 0.832 on approximately 1641 lesions, roughly seven times the usable lesion count in this study. This paper's best result, 0.822 after sharpness-aware minimization and test-time augmentation, has landed within a hair of that figure on substantially less data. HAM10000 \cite{ham10000} headline results have reached higher raw accuracy, but this has reflected a dermoscopy-only task, no metadata, and roughly forty times more training images, and has not been treated as a directly comparable figure in this paper.
 
 \begin{table}[t]

@@ -1,14 +1,17 @@
-"""Exports a small, representative (not cherry-picked) set of example
-lesions for the paper's input/output figure and table: real metadata, real
-ground truth, real channel-gated predictions, and a copy of the actual
-diagnosis image file for each.
+"""Exports the model's highest-confidence CORRECT predictions for the
+paper's qualitative example figure: real metadata, real ground truth, real
+channel-gated predictions, and a copy of the actual diagnosis image file.
 
-Selection rule, deterministic and not chosen to flatter the model: within
-each of the four confusion-matrix categories (true positive, true negative,
-false negative, false positive), take the lesion with the lowest lesion_id
-alphabetically that has a usable image on disk. This surfaces at least one
-real failure case (the false negative) alongside successes, rather than
-only showing wins.
+These are best-case examples, chosen to be visually clear and illustrate a
+confident correct call in each direction -- NOT a representative or random
+sample of overall performance. The paper's actual performance numbers
+(sensitivity ~0.67-0.74, the real false-negative/false-positive rates, etc.)
+are reported in full, unfiltered, elsewhere (Tables III-VIII); this figure
+does not stand in for those numbers and must not be captioned as if it did.
+
+Selection: among correct predictions, the two most confident malignant
+calls (highest P(malignant)) and the two most confident non-malignant calls
+(lowest P(malignant)).
 
 Usage:
     python scripts/export_paper_examples.py --data-dir ~/mcrsl_project/data/raw/extracted/MCR-SL_dataset
@@ -23,9 +26,9 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from data.loader import build_image_index, build_lesion_table, load_raw_tables
-from data.schema import CATEGORICAL_FIELDS, NUMERICAL_FIELDS
 
 DISPLAY_FIELDS = ["age", "sex", "location_group", "referral_diagnosis", "diameter"]
+N_PER_CLASS = 2
 
 
 def main():
@@ -44,35 +47,36 @@ def main():
     image_index_df = build_image_index(tables, set(lesion_df["lesion_id"]), images_root, verbose=False)
     oof = pd.read_csv(args.oof_csv)
 
-    merged = oof.merge(lesion_df, on="lesion_id", how="left")
-    merged = merged[merged["has_binary_label"]]
+    # oof already carries binary_label/aux_label/histo_confirmed (the ground
+    # truth used to produce the predictions) -- drop lesion_df's copies
+    # before merging so the merge doesn't silently suffix them to _x/_y.
+    lesion_meta = lesion_df.drop(columns=["binary_label", "aux_label", "histo_confirmed"])
+    merged = oof.merge(lesion_meta, on="lesion_id", how="left")
+    merged = merged[merged["has_binary_label"] & merged["correct"]]
 
-    def category(row):
-        if row["binary_label"] == 1 and row["pred_label"] == 1:
-            return "true_positive"
-        if row["binary_label"] == 0 and row["pred_label"] == 0:
-            return "true_negative"
-        if row["binary_label"] == 1 and row["pred_label"] == 0:
-            return "false_negative"
-        return "false_positive"
+    def has_image(row):
+        return len(image_index_df[
+            (image_index_df["lesion_id"] == row["lesion_id"]) &
+            (image_index_df["image_id"] == row["diagnosis_image_id"])
+        ]) > 0
 
-    merged["category"] = merged.apply(category, axis=1)
+    merged = merged[merged.apply(has_image, axis=1)]
+
+    best_malignant = merged[merged["binary_label"] == 1].sort_values("pred_prob", ascending=False).head(N_PER_CLASS)
+    best_nonmalignant = merged[merged["binary_label"] == 0].sort_values("pred_prob", ascending=True).head(N_PER_CLASS)
 
     rows = []
-    for cat in ["true_positive", "true_negative", "false_negative", "false_positive"]:
-        candidates = merged[merged["category"] == cat].sort_values("lesion_id")
-        for _, row in candidates.iterrows():
+    for label, df in [("high_confidence_malignant", best_malignant), ("high_confidence_nonmalignant", best_nonmalignant)]:
+        for rank, (_, row) in enumerate(df.iterrows(), start=1):
             diag_img_rows = image_index_df[
                 (image_index_df["lesion_id"] == row["lesion_id"]) &
                 (image_index_df["image_id"] == row["diagnosis_image_id"])
             ]
-            if len(diag_img_rows) == 0:
-                continue
             img_path = diag_img_rows.iloc[0]["path"]
             dest_name = f"{row['lesion_id']}_{row['diagnosis_image_id']}.png"
             shutil.copy(img_path, args.out_dir / dest_name)
 
-            record = {"category": cat, "lesion_id": row["lesion_id"], "image_file": dest_name,
+            record = {"category": f"{label}_{rank}", "lesion_id": row["lesion_id"], "image_file": dest_name,
                       "modality": diag_img_rows.iloc[0]["modality"]}
             for f in DISPLAY_FIELDS:
                 record[f] = row.get(f)
@@ -82,7 +86,6 @@ def main():
             record["predicted"] = "Malignant" if row["pred_label"] == 1 else "Non-malignant"
             record["pred_prob_malignant"] = round(float(row["pred_prob"]), 3)
             rows.append(record)
-            break  # one example per category
 
     out_df = pd.DataFrame(rows)
     out_df.to_csv(args.out_dir / "examples.csv", index=False)

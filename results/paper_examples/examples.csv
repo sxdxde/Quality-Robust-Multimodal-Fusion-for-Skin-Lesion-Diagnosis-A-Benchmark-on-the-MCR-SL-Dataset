@@ -1,0 +1,5 @@
+category,lesion_id,image_file,modality,age,sex,location_group,referral_diagnosis,diameter,mean_image_rating,histo_confirmed,ground_truth,predicted,pred_prob_malignant
+high_confidence_malignant_1,L0189,L0189_I_D00895.png,dermoscopy,70,Male,Face,BCC,5.9,6.666666666666667,True,Malignant,Malignant,1.0
+high_confidence_malignant_2,L0119,L0119_I_D00485.png,dermoscopy,57,Male,Face,BCC,14.4,3.6666666666666665,True,Malignant,Malignant,1.0
+high_confidence_nonmalignant_1,L0095,L0095_I_D00365.png,dermoscopy,50,Female,Back,Voluntary sample,5.1,9.0,False,Non-malignant,Non-malignant,0.0
+high_confidence_nonmalignant_2,L0028,L0028_I_D00040.png,dermoscopy,64,Male,Back,SK,8.8,7.333333333333333,False,Non-malignant,Non-malignant,0.0
