@@ -25,6 +25,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from data.loader import parse_numeric_with_unknown, encode_categorical
+from data.preprocessing import apply_dermoscopy_preprocessing
 from data.schema import CATEGORICAL_FIELDS, NUMERICAL_FIELDS
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -63,7 +64,12 @@ def fit_numeric_stats(lesion_df: pd.DataFrame, subject_ids: set) -> dict[str, tu
 
 
 def _build_samples(lesion_df: pd.DataFrame, image_index_df: pd.DataFrame, subject_ids: set,
-                    train_mode: bool, use_all_dermoscopic: bool, verbose: bool) -> list[dict]:
+                    use_all_images: bool, verbose: bool) -> list[dict]:
+    """use_all_images=True: every dermoscopy-modality image per lesion is a
+    separate sample (falls back to the diagnosis_image_id image, any
+    modality, if a lesion has zero dermoscopy images). False: exactly the
+    diagnosis_image_id image, one sample per lesion.
+    """
     subset = lesion_df[lesion_df["subject_id"].isin(subject_ids)]
     images_by_lesion = {lid: g for lid, g in image_index_df.groupby("lesion_id")}
 
@@ -73,7 +79,7 @@ def _build_samples(lesion_df: pd.DataFrame, image_index_df: pd.DataFrame, subjec
         lesion_id = row["lesion_id"]
         imgs = images_by_lesion.get(lesion_id, image_index_df.iloc[0:0])
 
-        if train_mode and use_all_dermoscopic:
+        if use_all_images:
             use_imgs = imgs[imgs["modality"] == "dermoscopy"]
             if len(use_imgs) == 0:
                 use_imgs = imgs[imgs["image_id"] == row["diagnosis_image_id"]]
@@ -104,14 +110,26 @@ class MCRSLDataset(Dataset):
         split: str,  # "train" | "val" | "test"
         use_all_dermoscopic: bool = True,
         verbose: bool = True,
+        use_preprocessing: bool = False,
+        multi_image_eval: bool = False,
     ):
+        """use_all_dermoscopic: for split=="train" only, use every dermoscopy
+        image per lesion as a separate sample (more training signal at
+        N=240). multi_image_eval: for split in ("val","test"), same
+        multi-image sampling instead of the single diagnosis_image_id image —
+        predictions must be averaged back to one-per-lesion by the caller
+        (train.py / robustness_analysis.py), this class does not aggregate.
+        use_preprocessing: apply dermoscopy hair-removal + color
+        normalization (data/preprocessing.py) before the standard transform.
+        """
         assert split in ("train", "val", "test")
         self.split = split
         self.numeric_stats = numeric_stats
+        self.use_preprocessing = use_preprocessing
         self.transform = build_transforms(image_size, train=(split == "train"))
+        use_all_images = (split == "train" and use_all_dermoscopic) or (split != "train" and multi_image_eval)
         self.samples = _build_samples(
-            lesion_df, image_index_df, subject_ids,
-            train_mode=(split == "train"), use_all_dermoscopic=use_all_dermoscopic, verbose=verbose,
+            lesion_df, image_index_df, subject_ids, use_all_images=use_all_images, verbose=verbose,
         )
 
     def __len__(self):
@@ -121,6 +139,8 @@ class MCRSLDataset(Dataset):
         s = self.samples[idx]
 
         image = Image.open(s["path"]).convert("RGB")
+        if self.use_preprocessing:
+            image = apply_dermoscopy_preprocessing(image)
         image = self.transform(image)
 
         categorical = {}

@@ -39,8 +39,29 @@ class TrainConfig:
 
     num_aux_classes: int = 9
 
+    # --- post-baseline experiment knobs (each its own tracked run, not part
+    # of the core CLAUDE.md ablation matrix — see run_tag) ---
+    use_dermoscopy_preprocessing: bool = False  # data/preprocessing.py: hair removal + color norm
+    use_contrastive: bool = False  # supervised contrastive aux loss on the fused embedding
+    contrastive_weight: float = 0.1
+    optimizer: str = "adam"  # "adam" | "adamw_cosine_discriminative"
+    backbone_lr_mult: float = 0.1  # only used by adamw_cosine_discriminative
+
+    # Final-test-only eval-time options (never applied during training/val —
+    # val must stay fast and unaugmented for honest checkpoint selection).
+    use_tta: bool = False  # average sigmoid probs over original + horizontal flip
+    multi_image_eval: bool = False  # average predictions across all of a lesion's dermoscopic images, not just diagnosis_image_id
+
+    # run_tag identifies this experiment condition in the ledger/checkpoint
+    # filenames, decoupled from `variant` (the architecture). Defaults to
+    # variant when unset so the original 3-variant runs are unaffected.
+    run_tag: str = ""
+
     results_ledger_path: str = "results/results_ledger.csv"
     checkpoint_dir: str = "checkpoints"
     log_dir: str = "logs"
 
     notes: str = ""
+
+    def resolved_run_tag(self) -> str:
+        return self.run_tag or self.variant

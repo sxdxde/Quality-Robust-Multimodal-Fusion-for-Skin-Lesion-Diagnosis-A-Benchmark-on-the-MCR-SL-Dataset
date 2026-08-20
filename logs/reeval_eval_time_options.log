@@ -1,0 +1,30 @@
+[build_lesion_table] 240 lesions total
+  binary task: 6 excluded (malignancy=='unknown')
+  aux 9-class task: 6 excluded (unified_diagnosis=='UNK' or missing)
+  histopath-confirmed: 28
+  lesions missing a quality rating: 2
+[build_image_index] 2394 raw image rows -> 2131 after lesion_id join -> 2131 after file-existence check (0 missing files dropped)
+
+=== channel_gated_tta (tta=True, multi_image_eval=False) ===
+[channel_gated_tta fold 0] accuracy=0.8000 balanced_accuracy=0.7708 auroc=0.9028
+[channel_gated_tta fold 1] accuracy=0.7600 balanced_accuracy=0.6910 auroc=0.9375
+[channel_gated_tta fold 2] accuracy=0.8367 balanced_accuracy=0.7515 auroc=0.9085
+[channel_gated_tta fold 3] accuracy=0.9355 balanced_accuracy=0.9097 auroc=0.9630
+[channel_gated_tta fold 4] accuracy=0.8714 balanced_accuracy=0.8185 auroc=0.7742
+[channel_gated_tta] AGGREGATE: accuracy=0.8407+/-0.0602 balanced_accuracy=0.7883+/-0.0732 auroc=0.8972+/-0.0652
+
+=== channel_gated_multiimage (tta=False, multi_image_eval=True) ===
+[channel_gated_multiimage fold 0] accuracy=0.8400 balanced_accuracy=0.8264 auroc=0.8958
+[channel_gated_multiimage fold 1] accuracy=0.7600 balanced_accuracy=0.6910 auroc=0.9583
+[channel_gated_multiimage fold 2] accuracy=0.8571 balanced_accuracy=0.7637 auroc=0.8872
+[channel_gated_multiimage fold 3] accuracy=0.9531 balanced_accuracy=0.9732 auroc=0.9688
+[channel_gated_multiimage fold 4] accuracy=0.8592 balanced_accuracy=0.8115 auroc=0.8175
+[channel_gated_multiimage] AGGREGATE: accuracy=0.8539+/-0.0615 balanced_accuracy=0.8132+/-0.0929 auroc=0.9055+/-0.0547
+
+=== channel_gated_tta_multiimage (tta=True, multi_image_eval=True) ===
+[channel_gated_tta_multiimage fold 0] accuracy=0.8400 balanced_accuracy=0.8264 auroc=0.9097
+[channel_gated_tta_multiimage fold 1] accuracy=0.7600 balanced_accuracy=0.6910 auroc=0.9583
+[channel_gated_tta_multiimage fold 2] accuracy=0.8571 balanced_accuracy=0.7637 auroc=0.8994
+[channel_gated_tta_multiimage fold 3] accuracy=0.9531 balanced_accuracy=0.9732 auroc=0.9688
+[channel_gated_tta_multiimage fold 4] accuracy=0.8732 balanced_accuracy=0.8194 auroc=0.8056
+[channel_gated_tta_multiimage] AGGREGATE: accuracy=0.8567+/-0.0620 balanced_accuracy=0.8147+/-0.0929 auroc=0.9084+/-0.0580

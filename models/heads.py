@@ -61,3 +61,39 @@ class QualityHead(nn.Module):
     @staticmethod
     def loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         return F.mse_loss(pred, target)
+
+
+def supervised_contrastive_loss(embeddings: torch.Tensor, labels: torch.Tensor, temperature: float = 0.1) -> torch.Tensor:
+    """SupCon (Khosla et al. 2020) on the fused pre-head embedding, using the
+    binary malignant/non-malignant label. Pulls same-class lesions together,
+    pushes different-class apart — an auxiliary signal on top of the
+    classification loss, intended to help given how few malignant examples
+    each batch has.
+
+    Returns 0 if the batch doesn't contain at least one positive pair (i.e.
+    at least 2 examples of some class) — SupCon is undefined otherwise, and
+    with malignant:non-malignant ~1:4.6 some small batches will have 0-1
+    malignant examples.
+    """
+    device = embeddings.device
+    labels = labels.view(-1, 1)
+    batch_size = labels.shape[0]
+
+    same_class = torch.eq(labels, labels.T).float().to(device)
+    self_mask = torch.eye(batch_size, device=device)
+    positive_mask = same_class - self_mask  # exclude self-comparisons
+    if positive_mask.sum() == 0:
+        return torch.tensor(0.0, device=device)
+
+    z = F.normalize(embeddings, dim=-1)
+    sim = torch.matmul(z, z.T) / temperature
+    sim = sim - sim.max(dim=1, keepdim=True).values.detach()  # numerical stability
+
+    exp_sim = torch.exp(sim) * (1 - self_mask)  # exclude self from the denominator
+    log_prob = sim - torch.log(exp_sim.sum(dim=1, keepdim=True) + 1e-12)
+
+    mean_log_prob_pos = (positive_mask * log_prob).sum(dim=1) / positive_mask.sum(dim=1).clamp(min=1)
+    valid = positive_mask.sum(dim=1) > 0
+    if valid.sum() == 0:
+        return torch.tensor(0.0, device=device)
+    return -mean_log_prob_pos[valid].mean()

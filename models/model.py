@@ -70,6 +70,7 @@ class MCRSLModel(nn.Module):
         out = {
             "binary_logits": self.binary_head(fused),
             "aux_logits": self.aux_head(fused),
+            "fused_embedding": fused,
         }
         if self.quality_head is not None:
             out["quality_pred"] = self.quality_head(fused)
