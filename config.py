@@ -44,8 +44,9 @@ class TrainConfig:
     use_dermoscopy_preprocessing: bool = False  # data/preprocessing.py: hair removal + color norm
     use_contrastive: bool = False  # supervised contrastive aux loss on the fused embedding
     contrastive_weight: float = 0.1
-    optimizer: str = "adam"  # "adam" | "adamw_cosine_discriminative"
+    optimizer: str = "adam"  # "adam" | "adamw_cosine_discriminative" | "sam_adamw"
     backbone_lr_mult: float = 0.1  # only used by adamw_cosine_discriminative
+    sam_rho: float = 0.05  # SAM neighborhood size, only used by sam_adamw
 
     # Final-test-only eval-time options (never applied during training/val —
     # val must stay fast and unaugmented for honest checkpoint selection).

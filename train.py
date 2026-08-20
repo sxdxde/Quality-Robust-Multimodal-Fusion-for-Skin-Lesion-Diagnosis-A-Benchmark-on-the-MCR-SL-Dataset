@@ -36,6 +36,7 @@ from data.loader import build_image_index, build_lesion_table, load_raw_tables
 from evaluate import aggregate_fold_metrics, append_to_ledger, compute_binary_metrics
 from models.heads import AuxDiagnosisHead, BinaryHead, QualityHead, supervised_contrastive_loss
 from models.model import MCRSLModel
+from models.sam_optimizer import SAM
 
 
 def compute_binary_pos_weight(lesion_df, subject_ids) -> torch.Tensor:
@@ -71,6 +72,9 @@ def build_optimizer(model: torch.nn.Module, cfg: TrainConfig):
     'adamw_cosine_discriminative': AdamW with a lower LR on the pretrained
     EfficientNet-B0 backbone than on the newly-initialized heads/fusion/
     metadata encoder, plus a cosine LR schedule over cfg.epochs.
+    'sam_adamw': Sharpness-Aware Minimization wrapping AdamW (single LR, no
+    schedule — kept isolated from the discriminative-LR/cosine combo above
+    so its effect isn't confounded with that already-tested variant).
     """
     if cfg.optimizer == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
@@ -84,48 +88,64 @@ def build_optimizer(model: torch.nn.Module, cfg: TrainConfig):
             {"params": head_params, "lr": cfg.lr},
         ], weight_decay=cfg.weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
+    elif cfg.optimizer == "sam_adamw":
+        optimizer = SAM(model.parameters(), torch.optim.AdamW, rho=cfg.sam_rho, lr=cfg.lr, weight_decay=cfg.weight_decay)
+        scheduler = None
     else:
         raise ValueError(f"unknown optimizer {cfg.optimizer!r}")
     return optimizer, scheduler
+
+
+def compute_loss(model, batch, device, cfg: TrainConfig, pos_weight, aux_weights) -> torch.Tensor:
+    out = model(batch["image"], batch["categorical"], batch["numerical"], batch["numerical_missing"])
+
+    mask = batch["has_binary_label"]
+    if mask.sum() > 0:
+        binary_loss = BinaryHead.loss(
+            out["binary_logits"][mask], batch["binary_label"][mask],
+            pos_weight=pos_weight, focal_gamma=cfg.focal_gamma,
+        )
+    else:
+        binary_loss = torch.tensor(0.0, device=device)
+
+    aux_loss = AuxDiagnosisHead.loss(out["aux_logits"], batch["aux_label"], class_weights=aux_weights)
+    loss = binary_loss + cfg.aux_loss_weight * aux_loss
+
+    if cfg.quality_aware:
+        qmask = batch["has_quality_rating"]
+        if qmask.sum() > 0:
+            quality_loss = QualityHead.loss(out["quality_pred"][qmask], batch["quality_target"][qmask])
+            loss = loss + cfg.quality_loss_weight * quality_loss
+
+    if cfg.use_contrastive and mask.sum() > 1:
+        contrastive_loss = supervised_contrastive_loss(out["fused_embedding"][mask], batch["binary_label"][mask])
+        loss = loss + cfg.contrastive_weight * contrastive_loss
+
+    return loss
 
 
 def run_epoch(model, loader, device, optimizer, cfg: TrainConfig, pos_weight, aux_weights, train: bool):
     model.train() if train else model.eval()
     total_loss = 0.0
     n_batches = 0
+    is_sam = isinstance(optimizer, SAM)
 
     with torch.set_grad_enabled(train):
         for batch in loader:
             batch = move_batch(batch, device)
-            out = model(batch["image"], batch["categorical"], batch["numerical"], batch["numerical_missing"])
 
-            mask = batch["has_binary_label"]
-            if mask.sum() > 0:
-                binary_loss = BinaryHead.loss(
-                    out["binary_logits"][mask], batch["binary_label"][mask],
-                    pos_weight=pos_weight, focal_gamma=cfg.focal_gamma,
-                )
-            else:
-                binary_loss = torch.tensor(0.0, device=device)
-
-            aux_loss = AuxDiagnosisHead.loss(out["aux_logits"], batch["aux_label"], class_weights=aux_weights)
-
-            loss = binary_loss + cfg.aux_loss_weight * aux_loss
-
-            if cfg.quality_aware:
-                qmask = batch["has_quality_rating"]
-                if qmask.sum() > 0:
-                    quality_loss = QualityHead.loss(out["quality_pred"][qmask], batch["quality_target"][qmask])
-                    loss = loss + cfg.quality_loss_weight * quality_loss
-
-            if cfg.use_contrastive and mask.sum() > 1:
-                contrastive_loss = supervised_contrastive_loss(out["fused_embedding"][mask], batch["binary_label"][mask])
-                loss = loss + cfg.contrastive_weight * contrastive_loss
-
-            if train:
-                optimizer.zero_grad()
+            if train and is_sam:
+                loss = compute_loss(model, batch, device, cfg, pos_weight, aux_weights)
                 loss.backward()
-                optimizer.step()
+                optimizer.first_step(zero_grad=True)
+                compute_loss(model, batch, device, cfg, pos_weight, aux_weights).backward()
+                optimizer.second_step(zero_grad=True)
+            else:
+                loss = compute_loss(model, batch, device, cfg, pos_weight, aux_weights)
+                if train:
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
             total_loss += loss.item()
             n_batches += 1
@@ -275,8 +295,9 @@ def main():
     parser.add_argument("--use-preprocessing", action="store_true")
     parser.add_argument("--use-contrastive", action="store_true")
     parser.add_argument("--contrastive-weight", type=float, default=None)
-    parser.add_argument("--optimizer", default=None, choices=["adam", "adamw_cosine_discriminative"])
+    parser.add_argument("--optimizer", default=None, choices=["adam", "adamw_cosine_discriminative", "sam_adamw"])
     parser.add_argument("--backbone-lr-mult", type=float, default=None)
+    parser.add_argument("--sam-rho", type=float, default=None)
     parser.add_argument("--tta", action="store_true", help="TTA (flip-averaged) on the final test-fold eval only")
     parser.add_argument("--multi-image-eval", action="store_true", help="average predictions across all dermoscopic images per lesion on the final test-fold eval only")
     parser.add_argument("--notes", default="")
@@ -301,6 +322,8 @@ def main():
         cfg.optimizer = args.optimizer
     if args.backbone_lr_mult is not None:
         cfg.backbone_lr_mult = args.backbone_lr_mult
+    if args.sam_rho is not None:
+        cfg.sam_rho = args.sam_rho
     if args.tta:
         cfg.use_tta = True
     if args.multi_image_eval:
