@@ -3,10 +3,10 @@
 \citation{ham10000}
 \citation{metablock,paduf20}
 \citation{mcrsl}
-\citation{esteva2017}
-\citation{ham10000}
 \@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Contributions}{1}{}\protected@file@percent }
+\citation{esteva2017}
+\citation{ham10000}
 \citation{metablock}
 \citation{paduf20}
 \citation{se}
@@ -21,38 +21,40 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Architecture}{2}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Training and Evaluation Protocol}{2}{}\protected@file@percent }
 \citation{mcrsl}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Channel-gated fusion architecture, with one real example flowing through: lesion L0006, a histopathology-confirmed basal cell carcinoma. The metadata vector is projected to a per-channel sigmoid gate ($\otimes $: elementwise multiplication) that reweights the image encoder's convolutional feature map before pooling and classification. Full example set, including a misclassified case, in Table~\ref {tab:examples}.}}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Channel-gated fusion architecture, with tensor shapes and one real example flowing through: lesion L0189, a histopathology-confirmed basal cell carcinoma, one of the model's highest-confidence correct predictions ($\otimes $: elementwise multiplication of the metadata-derived gate with the convolutional feature map, per channel, before pooling). The late-fusion baseline shares the same final Linear+ReLU+Dropout projection, applied instead to concat(pooled image, metadata) directly. Full example gallery in Fig.~\ref {fig:examples}.}}{3}{}\protected@file@percent }
 \newlabel{fig:arch}{{1}{3}{}{figure.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Experimental Results}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Dataset}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Example Inputs and Outputs}{3}{}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces MCR-SL dataset summary, as verified against the released files}}{3}{}\protected@file@percent }
 \newlabel{tab:dataset}{{I}{3}{}{table.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Highest-confidence correct predictions, channel-gated method: two malignant (basal cell carcinoma, both histopathology-confirmed) and two non-malignant lesions. Border color denotes a correct prediction.}}{3}{}\protected@file@percent }
+\newlabel{fig:examples}{{2}{3}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Experimental Results}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Dataset}{3}{}\protected@file@percent }
+\newlabel{sec:dataset}{{\mbox  {IV-A}}{3}{}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Example Inputs and Outputs}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Evaluation Metrics}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Core Ablation Results}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Follow-Up Intervention Sweep}{3}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Example inputs and outputs, channel-gated method, one real lesion per confusion-matrix outcome (not cherry-picked; see selection rule above)}}{4}{}\protected@file@percent }
-\newlabel{tab:examples}{{II}{4}{}{table.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds}}{4}{}\protected@file@percent }
-\newlabel{tab:ablation}{{III}{4}{}{table.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Follow-up interventions vs.\ the channel-gated baseline, mean over five folds. Balanced std for these interventions ranged 0.04--0.10, comparable to Table~\ref {tab:ablation}}}{4}{}\protected@file@percent }
-\newlabel{tab:extended}{{IV}{4}{}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds}}{4}{}\protected@file@percent }
+\newlabel{tab:ablation}{{II}{4}{}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Core Ablation Results}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Follow-Up Intervention Sweep}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Follow-up configurations vs.\ the channel-gated baseline, mean over five folds. Balanced-accuracy std for these configurations ranged 0.04--0.10, comparable to Table~\ref {tab:ablation}}}{4}{}\protected@file@percent }
+\newlabel{tab:extended}{{III}{4}{}{table.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Robustness Analyses}{4}{}\protected@file@percent }
 \newlabel{sec:robustness}{{\mbox  {IV-F}}{4}{}{subsection.4.6}{}}
-\citation{paduf20,metablock}
-\citation{ham10000}
+\citation{paduf20}
 \citation{metablock}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Accuracy by expert-rated image-quality tercile, channel-gated method, $N=231$ lesions ($N$ per tercile approximately 77).}}{5}{}\protected@file@percent }
-\newlabel{fig:tercile}{{2}{5}{}{figure.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Performance by image-quality tercile, channel-gated method}}{5}{}\protected@file@percent }
-\newlabel{tab:tercile}{{V}{5}{}{table.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Histopathology-confirmed vs.\ panel-consensus-only lesions, channel-gated method}}{5}{}\protected@file@percent }
-\newlabel{tab:histo}{{VI}{5}{}{table.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Metadata field importance (mean absolute logit change under ablation). * denotes a field the dataset paper has reported as significantly associated with malignancy}}{5}{}\protected@file@percent }
-\newlabel{tab:metaimp}{{VII}{5}{}{table.7}{}}
+\citation{diffmic}
+\citation{ham10000}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Accuracy by expert-rated image-quality tercile, channel-gated method. Tercile sizes are uneven (Table~\ref {tab:tercile}: 85, 93, 53 of $N=231$) due to tied values in the underlying rating.}}{5}{}\protected@file@percent }
+\newlabel{fig:tercile}{{3}{5}{}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Performance by image-quality tercile, channel-gated method, without and with quality-aware training (QA). Accuracy gap, high $-$ low tercile: 0.091 without QA and 0.101 with QA, both from unrounded values; subtracting the rounded figures shown here gives 0.092 for the without-QA row instead of 0.091, a rounding artifact, not a data change}}{5}{}\protected@file@percent }
+\newlabel{tab:tercile}{{IV}{5}{}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Histopathology-confirmed vs.\ panel-consensus-only lesions, channel-gated method}}{5}{}\protected@file@percent }
+\newlabel{tab:histo}{{V}{5}{}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Metadata field importance (mean absolute logit change under ablation). * denotes a field the dataset paper has reported as significantly associated with malignancy}}{5}{}\protected@file@percent }
+\newlabel{tab:metaimp}{{VI}{5}{}{table.6}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Comparison with the Literature}{5}{}\protected@file@percent }
 \newlabel{sec:comparison}{{\mbox  {IV-G}}{5}{}{subsection.4.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{5}{}\protected@file@percent }
+\citation{diffmic}
 \bibcite{mcrsl}{1}
 \bibcite{esteva2017}{2}
 \bibcite{ham10000}{3}
@@ -65,7 +67,9 @@
 \bibcite{adamw}{10}
 \bibcite{supcon}{11}
 \bibcite{focal}{12}
-\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Comparison with the closest published multimodal skin lesion benchmark}}{6}{}\protected@file@percent }
-\newlabel{tab:comparison}{{VIII}{6}{}{table.8}{}}
+\bibcite{diffmic}{13}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Comparison with the closest verified published binary-task result. PAD-UFES-20's own six-class figures (0.765--0.842) are omitted as not comparable to a binary task}}{6}{}\protected@file@percent }
+\newlabel{tab:comparison}{{VII}{6}{}{table.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
 \gdef \@abspage@last{6}

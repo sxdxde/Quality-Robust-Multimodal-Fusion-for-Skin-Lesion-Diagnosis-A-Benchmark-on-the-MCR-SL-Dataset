@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  20 AUG 2026 14:05
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  20 AUG 2026 21:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -572,6 +572,14 @@ File: tikzlibrarybackgrounds.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 \pgf@layerbox@background=\box68
 \pgf@layerboxsaved@background=\box69
 )
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/frontendlayer/tikz/lib
+raries/tikzlibraryshapes.geometric.code.tex
+File: tikzlibraryshapes.geometric.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/pgf/libraries/shapes/pgfli
+braryshapes.geometric.code.tex
+File: pgflibraryshapes.geometric.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+))
 (/usr/local/texlive/2026basic/texmf-dist/tex/latex/l3backend/l3backend-pdftex.d
 ef
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
@@ -645,73 +653,48 @@ Underfull \hbox (badness 2261) in paragraph at lines 44--45
 \OT1/ptm/m/n/10 mance, a quality-aware aux-il-iary train-ing ob-jec-tive,
  []
 
-
-Underfull \hbox (badness 5189) in paragraph at lines 45--46
-[]\OT1/ptm/m/n/10 A sweep of nine fur-ther in-ter-ven-tions, in-clud-ing
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 45--46
-\OT1/ptm/m/n/10 multi-image eval-u-a-tion av-er-ag-ing, fo-cal loss,
- []
-
-
-Underfull \hbox (badness 1735) in paragraph at lines 45--46
-\OT1/ptm/m/n/10 dermoscopy-specific pre-pro-cess-ing, and a su-per-vised
- []
-
 [1{/usr/local/texlive/2026basic/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/
 usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
 ]
-<figures/examples/L0006_I_D00019.jpg, id=14, 451.6875pt x 451.6875pt>
-File: figures/examples/L0006_I_D00019.jpg Graphic file (type jpg)
-<use figures/examples/L0006_I_D00019.jpg>
-Package pdftex.def Info: figures/examples/L0006_I_D00019.jpg  used on input lin
-e 77.
+<figures/examples/L0189_I_D00895.jpg, id=14, 451.6875pt x 451.6875pt>
+File: figures/examples/L0189_I_D00895.jpg Graphic file (type jpg)
+<use figures/examples/L0189_I_D00895.jpg>
+Package pdftex.def Info: figures/examples/L0189_I_D00895.jpg  used on input lin
+e 126.
 (pdftex.def)             Requested size: 48.36958pt x 48.36937pt.
  [2]
-File: figures/examples/L0006_I_D00019.jpg Graphic file (type jpg)
-<use figures/examples/L0006_I_D00019.jpg>
-Package pdftex.def Info: figures/examples/L0006_I_D00019.jpg  used on input lin
-e 156.
-(pdftex.def)             Requested size: 42.67912pt x 42.67642pt.
-<figures/examples/L0001_I_D00000.jpg, id=18, 451.6875pt x 451.6875pt>
-File: figures/examples/L0001_I_D00000.jpg Graphic file (type jpg)
-<use figures/examples/L0001_I_D00000.jpg>
-Package pdftex.def Info: figures/examples/L0001_I_D00000.jpg  used on input lin
-e 158.
-(pdftex.def)             Requested size: 42.67912pt x 42.67642pt.
-<figures/examples/L0065_I_D00173.jpg, id=19, 451.6875pt x 451.6875pt>
-File: figures/examples/L0065_I_D00173.jpg Graphic file (type jpg)
-<use figures/examples/L0065_I_D00173.jpg>
-Package pdftex.def Info: figures/examples/L0065_I_D00173.jpg  used on input lin
-e 160.
-(pdftex.def)             Requested size: 42.67912pt x 42.67642pt.
-<figures/examples/L0002_I_D00003.jpg, id=20, 451.6875pt x 451.6875pt>
-File: figures/examples/L0002_I_D00003.jpg Graphic file (type jpg)
-<use figures/examples/L0002_I_D00003.jpg>
-Package pdftex.def Info: figures/examples/L0002_I_D00003.jpg  used on input lin
-e 162.
-(pdftex.def)             Requested size: 42.67912pt x 42.67642pt.
+<figures/example_gallery.png, id=18, 526.6074pt x 172.7253pt>
+File: figures/example_gallery.png Graphic file (type png)
+<use figures/example_gallery.png>
+Package pdftex.def Info: figures/example_gallery.png  used on input line 217.
+(pdftex.def)             Requested size: 252.0pt x 82.65681pt.
 
-[3 <./figures/examples/L0006_I_D00019.jpg>]
-Underfull \hbox (badness 10000) in paragraph at lines 227--228
+[3 <./figures/examples/L0189_I_D00895.jpg> <./figures/example_gallery.png>]
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 2
+84.
+
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
+Underfull \hbox (badness 10000) in paragraph at lines 284--285
 []\OT1/ptm/b/n/10 Quality-stratified per-for-mance. \OT1/ptm/m/n/10 Le-sions ha
 ve been
  []
 
-<figures/quality_tercile_clean.png, id=27, 238.491pt x 173.448pt>
+
+Underfull \hbox (badness 1838) in paragraph at lines 284--285
+\OT1/ptm/m/n/10 quality-performance re-la-tion-ship de-tected at 231 le-sions,
+ []
+
+[4]
+<figures/quality_tercile_clean.png, id=33, 238.491pt x 173.448pt>
 File: figures/quality_tercile_clean.png Graphic file (type png)
 <use figures/quality_tercile_clean.png>
 Package pdftex.def Info: figures/quality_tercile_clean.png  used on input line 
-231.
+288.
 (pdftex.def)             Requested size: 214.20154pt x 155.7868pt.
-[4 <./figures/examples/L0001_I_D00000.jpg> <./figures/examples/L0065_I_D00173.j
-pg> <./figures/examples/L0002_I_D00003.jpg>]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
  [5 <./figures/quality_tercile_clean.png>]
 
 ** Conference Paper **
@@ -731,32 +714,35 @@ L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 14850 strings out of 469006
- 303396 string characters out of 5454814
- 706536 words of memory out of 5000000
- 43287 multiletter control sequences out of 15000+600000
- 676160 words of font info for 136 fonts, out of 8000000 for 9000
+ 15542 strings out of 469006
+ 319301 string characters out of 5454814
+ 743097 words of memory out of 5000000
+ 43966 multiletter control sequences out of 15000+600000
+ 677782 words of font info for 139 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 84i,12n,94p,1819b,811s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,11n,94p,1903b,962s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi1
 0.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/c
 mmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfont
-s/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsf
-onts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/a
-msfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/pu
-blic/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1
-/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
-/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
-1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/ur
-w/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/tim
-es/utmri8a.pfb>
-Output written on mcrsl_indicon2026.pdf (6 pages, 300962 bytes).
+s/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmr5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/am
+sfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/publi
+c/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
+1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/font
+s/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic/texmf-dist/f
+onts/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2026basic/texmf-dist/font
+s/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/typ
+e1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/u
+rw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/ti
+mes/utmri8a.pfb>
+Output written on mcrsl_indicon2026.pdf (6 pages, 2256389 bytes).
 PDF statistics:
- 104 PDF objects out of 1000 (max. 8388607)
- 61 compressed objects within 1 object stream
+ 118 PDF objects out of 1000 (max. 8388607)
+ 70 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 38 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 28 words of extra memory for PDF output out of 10000 (max. 10000000)
 

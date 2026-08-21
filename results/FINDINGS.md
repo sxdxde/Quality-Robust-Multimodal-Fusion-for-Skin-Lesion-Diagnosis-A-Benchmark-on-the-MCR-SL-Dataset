@@ -11,6 +11,60 @@ test fold) — no test-fold peeking, no hyperparameter tuning against final numb
 6 lesions have `malignancy=="unknown"` and are excluded from the binary task (234 usable).
 5 lesions have `unified_diagnosis=="UNK"` and are excluded from the 9-class aux task.
 
+## Architecture (block-by-block, matches Fig. 1 in the paper and models/*.py)
+
+- **Input**: one dermoscopic image (3×224×224, ImageNet-normalized) + patient metadata
+  (16 categorical + 4 numeric fields, after dropping the constant-valued and unusably
+  sparse free-text fields — see `data/schema.py`'s "explicitly dropped fields" note).
+
+- **Image encoder** (`models/image_encoder.py: EfficientNetB0Encoder`) — ImageNet-pretrained
+  EfficientNet-B0 (`timm`), fully trainable end to end (no frozen layers, unlike some
+  transfer-learning setups). `forward_features` gives a (B, 1280, 7, 7) conv feature map;
+  `AdaptiveAvgPool2d(1)` gives a (B, 1280) pooled vector. Both are returned from one forward
+  pass, so `image_only` (uses only the pooled vector) and both fusion variants share the
+  same backbone call.
+
+- **Metadata encoder** (`models/metadata_encoder.py: MetadataEncoder`):
+  - Categorical fields: each field gets its own `nn.Embedding(cardinality+1, 12)`. The "+1"
+    slot is a reserved "unknown" index for missing/unseen values — routed there, never
+    imputed, matching the dataset's own stated missingness policy.
+  - Numeric fields: passed through as raw per-field z-scored scalars (mean/std fit on
+    train-fold data only), each paired with a 0/1 missingness bit — 2 raw dims per field,
+    no embedding.
+  - All categorical embeddings (16 x 12 = 192-d) + numeric (value, missing-bit) pairs
+    (4 x 2 = 8-d) are concatenated (200-d total) and passed through a 2-layer MLP:
+    Linear(200->128) -> ReLU -> Dropout(0.2) -> Linear(128->128) -> ReLU, giving the
+    128-d metadata vector shown in Fig. 1.
+
+- **Fusion** (`models/fusion.py`) — two variants, sharing the same final projection layer:
+  - *Late fusion baseline*: concat(1280-d pooled image, 128-d metadata) = 1408-d ->
+    Linear(1408->256) -> ReLU -> Dropout(0.3). Output: 256-d.
+  - *Channel-gated fusion (main method)*: metadata vector -> Linear(128->1280) -> sigmoid
+    -> 1280-d gate in [0,1]. This gate multiplies the 1280-channel conv feature map
+    elementwise, channel by channel, broadcasting over the 7x7 spatial grid (the SE-block
+    mechanism, conditioned on metadata instead of the block's own pooled features). The
+    gated map is then globally average-pooled to 1280-d and passed through the **same**
+    Linear(1280->256) -> ReLU -> Dropout(0.3) projection as the late-fusion path. Output:
+    256-d. **This final 256-d projection was missing from the first draft of Fig. 1 and the
+    Section III-A prose (both showed "Gated global pool" feeding the heads directly at
+    1280-d) — corrected in both once found while writing this section.**
+
+- **Heads** (`models/heads.py`) — all single `nn.Linear` layers operating on the 256-d
+  fused vector (or directly on the 1280-d pooled image vector for `image_only`, which has
+  no fusion step to project it down):
+  - Binary head: Linear(256->1) -> logit -> sigmoid -> P(malignant). Weighted BCE (or focal
+    loss, gamma configurable) with pos_weight recomputed from each training fold's own
+    malignant ratio.
+  - Auxiliary head: Linear(256->9) -> 9-class logits (unified diagnosis), class-weighted
+    cross-entropy, contributes at 0.4x weight in the combined loss, exploratory table only.
+  - Quality head (quality-aware variant only): Linear(256->1) -> predicted mean expert
+    quality rating (rating/10, 0-1 normalized), MSE loss, weighted 0.15.
+
+- **Training-time-only auxiliary loss** (not depicted in Fig. 1 — applies to the 256-d fused
+  embedding *before* the heads, not a forward-pass block): supervised contrastive loss
+  (`models/heads.py: supervised_contrastive_loss`, SupCon-style), used only in the
+  `channel_gated_contrastive` follow-up experiment; a negative result there (see below).
+
 ## Core ablation matrix (CLAUDE.md's required matrix)
 
 | run | accuracy | balanced_acc | macro_F1 | sensitivity(malig) | specificity | AUROC |
