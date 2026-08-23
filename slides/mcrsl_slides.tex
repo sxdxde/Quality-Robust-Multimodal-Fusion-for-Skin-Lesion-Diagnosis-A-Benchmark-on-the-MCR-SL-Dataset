@@ -1,0 +1,484 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric}
+\usepackage{amsmath,amssymb}
+
+\title[Quality-Robust Multimodal Fusion for MCR-SL]{Quality-Stratified Multimodal Fusion for\\Skin Lesion Malignancy Classification on MCR-SL}
+\author{Sudarshan Sudhakar}
+\institute{IEEE INDICON 2026 Submission}
+\date{}
+
+\begin{document}
+
+% ---------------------------------------------------------------
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+% =================================================================
+\section{Motivation}
+\begin{frame}{Why This Problem?}
+\begin{itemize}
+\item Deep learning has reached dermatologist-level accuracy on \textbf{image-only} skin lesion classification (Esteva et al., 2017; HAM10000).
+\item But a real dermatologist never diagnoses from an image alone --- age, sex, lesion site, referral history all matter.
+\vspace{0.3cm}
+\item A smaller line of work fuses images with \textbf{patient metadata} (e.g. MetaBlock on PAD-UFES-20) and shows it helps.
+\vspace{0.3cm}
+\item \textbf{Missing piece:} none of these datasets record how \emph{good} the diagnostic image itself was.
+\begin{itemize}
+\item Real clinical images vary hugely in quality (lighting, focus, hair, blur).
+\item No prior benchmark could ask: \emph{do errors concentrate on poor-quality images?}
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The Opportunity: MCR-SL}
+A brand-new dataset (Castro-Fernandez et al., \emph{Data}, 2025) closes this gap:
+\begin{itemize}
+\item Every diagnostic image has an expert-assigned \textbf{1--10 quality rating}.
+\item Rich structured metadata per lesion/subject (22 fields).
+\item Partial histopathology confirmation (ground-truth beyond panel opinion).
+\end{itemize}
+\vspace{0.4cm}
+\begin{block}{Key fact}
+\textbf{No prior published benchmark exists on MCR-SL.} We are first.
+\end{block}
+\vspace{0.2cm}
+This lets us ask a question no earlier skin-lesion benchmark could:\\
+\emph{Does model performance degrade on lower-quality images, and can we train the model to be more robust to that?}
+\end{frame}
+
+% =================================================================
+\section{Dataset}
+\begin{frame}{MCR-SL Dataset at a Glance}
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Property} & \textbf{Value} \\
+\hline
+Subjects & 60 \\
+Lesions (total / usable for binary task) & 240 / 234 \\
+Malignant / non-malignant / undetermined & 42 / 192 / 6 \\
+Clinical images (usable) & 779 \\
+Dermoscopic images (usable) & 1352 \\
+Histopathology-confirmed lesions & 28 \\
+Metadata fields used (categorical / numeric) & 16 / 4 \\
+Lesions with full expert quality coverage & 238 \\
+Unified diagnosis classes & 9 \\
+\hline
+\end{tabular}
+\vspace{0.3cm}
+
+{\footnotesize ``Usable'' = has a lesion record match and an existing image file on disk.}
+\end{frame}
+
+\begin{frame}{Task Definition}
+\begin{block}{Primary task: Binary classification}
+Malignant vs.\ non-malignant, per lesion. \\
+Ground truth: \texttt{unified\_diagnosis} field --- histopathology-confirmed where available, expert-panel consensus otherwise.
+\end{block}
+\vspace{0.3cm}
+\begin{block}{Secondary / exploratory task: 9-class diagnosis}
+NEV, SK, BCC, AK, ATY, MEL, SCC, ANG, DF.
+\end{block}
+\vspace{0.3cm}
+\alert{Caveat:} several classes have $<$10 lesions (MEL=8, SCC=5, ANG=4, DF=2) --- reported as exploratory only, never as robust per-class statistics.
+\end{frame}
+
+% =================================================================
+\section{Our Contributions}
+\begin{frame}{What This Work Does}
+\begin{enumerate}
+\item First published benchmark on MCR-SL: image-only vs.\ late-fusion vs.\ \textbf{channel-gated fusion} (our main method), under a rigorous subject-disjoint 5-fold protocol.
+\vspace{0.15cm}
+\item Four \textbf{robustness analyses} enabled uniquely by MCR-SL's quality ratings and histopathology subset:
+\begin{itemize}
+\item Quality-stratified performance
+\item Quality-aware training (auxiliary objective)
+\item Histopathology-confirmed vs.\ panel-consensus comparison
+\item Metadata-importance audit vs.\ the dataset paper's own statistics
+\end{itemize}
+\vspace{0.15cm}
+\item A sweep of 7 further interventions (11 configs total: SAM, focal loss, preprocessing, contrastive loss, TTA, multi-image averaging, and combinations) --- honestly reporting what helped and what didn't.
+\vspace{0.15cm}
+\item Best result: \textbf{0.822 balanced accuracy}, close to the best verified published binary result on a comparable dataset (0.836) with far less training data.
+\end{enumerate}
+\end{frame}
+
+% =================================================================
+\section{Architecture}
+\begin{frame}{Architecture --- Two Encoders}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Image Encoder}
+\begin{itemize}
+\item EfficientNet-B0, ImageNet-pretrained
+\item Input: dermoscopic image, $224\times224$
+\item Output: 1280-d pooled vector \emph{and} the last conv feature map ($1280\times7\times7$)
+\end{itemize}
+\column{0.5\textwidth}
+\textbf{Metadata Encoder}
+\begin{itemize}
+\item 16 categorical fields $\to$ learned embeddings (with explicit ``unknown'' category --- \emph{no imputation})
+\item 4 numeric fields (age, height, weight, diameter) $\to$ z-scored using \emph{train-fold-only} statistics + missingness bit
+\item Concat $\to$ 2-layer MLP $\to$ 128-d metadata vector
+\end{itemize}
+\end{columns}
+\vspace{0.4cm}
+\centering
+\small Both encoders feed into one of two fusion strategies (next slide).
+\end{frame}
+
+\begin{frame}{Architecture --- Two Fusion Strategies}
+\begin{block}{1. Late fusion (baseline)}
+concat(pooled image vector, metadata vector) $\to$ Linear+ReLU+Dropout (256-d) $\to$ classifier.\\
+This is the standard MetaBlock-style approach from prior literature.
+\end{block}
+\vspace{0.3cm}
+\begin{block}{2. Channel-gated fusion (our main method)}
+metadata vector $\to$ Linear $\to$ Sigmoid $\to$ a 1280-d \textbf{gate} $\in [0,1]^{1280}$\\
+$\to$ multiply elementwise against the image's conv feature map, channel-by-channel\\
+$\to$ global pool $\to$ same 256-d projection $\to$ classifier.\\[4pt]
+\emph{Idea:} let patient metadata decide \textbf{which visual channels matter}, instead of just concatenating two vectors. Same mechanism as Squeeze-and-Excitation, but the gating signal comes from metadata, not from the image itself.
+\end{block}
+\end{frame}
+
+\begin{frame}{Full Pipeline (with a Real Example)}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm, minimum width=2.6cm, font=\tiny, fill=blue!6, inner sep=2pt},
+  gbox/.style={draw, rounded corners=2pt, align=center, minimum height=1.1cm, minimum width=2.6cm, font=\tiny, fill=orange!12, inner sep=2pt},
+  pbox/.style={draw, rounded corners=2pt, align=center, minimum height=1.3cm, minimum width=3.0cm, font=\tiny, fill=blue!10, inner sep=2pt},
+  hbox/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm, minimum width=2.3cm, font=\tiny, fill=green!10, inner sep=2pt},
+  outbox/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm, minimum width=2.8cm, font=\tiny, fill=red!8, thick, inner sep=2pt},
+  opnode/.style={draw, circle, font=\small, inner sep=2pt},
+  arr/.style={-Stealth, thick}
+]
+\node[box] (img) at (0,2.0) {Dermoscopic image\\$3\times224\times224$};
+\node[box] (enc) at (3.3,2.0) {EfficientNet-B0\\encoder};
+\node[font=\tiny] (fm) at (6.3,2.5) {$1280\times7\times7$ map};
+
+\node[box] (meta) at (0,-2.0) {Metadata\\age 70, male, face,\\referral: BCC};
+\node[box] (menc) at (3.3,-2.0) {Categorical embed.\\+ numeric MLP};
+\node[gbox] (gate) at (6.3,-2.0) {$\sigma$(Linear)\\gate $\in[0,1]^{1280}$};
+
+\node[opnode] (mult) at (8.7,0) {$\otimes$};
+\node[pbox] (proj) at (11.7,0) {Gated global\\pool + Linear+ReLU\\+Dropout $\to$ 256-d};
+
+\node[hbox] (bin) at (14.9,1.7) {Binary head\\(malignant)};
+\node[hbox] (aux) at (14.9,0) {Aux.\ head\\(9-class)};
+\node[hbox] (qual) at (14.9,-1.7) {Quality head\\(optional)};
+
+\node[outbox] (out) at (18.0,1.7) {$P$(malignant){=}1.00\\$\to$ Malignant\\(correct)};
+
+\draw[arr] (img) -- (enc);
+\draw[arr] (meta) -- (menc);
+\draw[arr] (menc) -- (gate);
+\draw[arr] (enc.east) -| (mult.north);
+\draw[arr] (gate.east) -| (mult.south);
+\draw[arr] (mult) -- (proj);
+\draw[arr] (proj.east) -| (bin.south);
+\draw[arr] (proj) -- (aux);
+\draw[arr] (proj.east) -| (qual.north);
+\draw[arr] (bin) -- (out);
+\end{tikzpicture}
+}
+\vspace{0.3cm}
+
+{\footnotesize Example: lesion L0189, histopathology-confirmed basal cell carcinoma --- one of the model's most confident correct predictions.}
+\end{frame}
+
+% =================================================================
+\section{Training \& Evaluation}
+\begin{frame}{Training / Evaluation Protocol}
+\begin{block}{Subject-disjoint stratified 5-fold cross-validation}
+\begin{itemize}
+\item Split by \texttt{subject\_id}, never by lesion --- a subject can have multiple lesions, and images of the same lesion are near-duplicates.
+\item Folds balanced by greedily equalizing malignant-lesion counts per fold.
+\item For each rotation: 1 fold held out for \textbf{test}, 1 disjoint fold held out only for \textbf{checkpoint selection} (val), rest for training.
+\item \textbf{No hyperparameter tuning against final test-fold results.}
+\end{itemize}
+\end{block}
+\vspace{0.3cm}
+\begin{block}{Losses}
+\begin{itemize}
+\item Binary head: weighted BCE, class weights recomputed per training fold ($\sim$1:4.6 malignant:non-malignant overall).
+\item Auxiliary 9-class head: class-weighted CE, downweighted ($\sim$0.3--0.5$\times$), exploratory only.
+\item (Optional) Quality-regression head: low weight (0.1--0.2), predicts mean expert rating.
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{Evaluation Metrics}
+Reported as mean $\pm$ std across the 5 test folds:
+\begin{itemize}
+\item Accuracy
+\item \textbf{Balanced accuracy} (primary metric --- malignant class is a minority)
+\item Macro-F1
+\item Sensitivity (recall) on the malignant class --- critical for cancer screening
+\item Specificity
+\item AUROC
+\item Confusion matrix, aggregated across folds
+\end{itemize}
+\end{frame}
+
+% =================================================================
+\section{Core Results}
+\begin{frame}{Core Ablation: Image-Only vs.\ Late Fusion vs.\ Channel-Gated}
+\centering
+\scriptsize
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Metric} & \textbf{Image-only} & \textbf{Late fusion} & \textbf{Channel-gated} \\
+\hline
+Accuracy & 0.813 $\pm$ 0.020 & 0.831 $\pm$ 0.052 & 0.833 $\pm$ 0.070 \\
+Balanced acc. & 0.784 $\pm$ 0.073 & 0.768 $\pm$ 0.090 & 0.783 $\pm$ 0.085 \\
+Macro F1 & 0.733 $\pm$ 0.038 & 0.743 $\pm$ 0.051 & \textbf{0.757 $\pm$ 0.073} \\
+Sensitivity & \textbf{0.697 $\pm$ 0.187} & 0.644 $\pm$ 0.191 & 0.672 $\pm$ 0.159 \\
+Specificity & 0.872 $\pm$ 0.061 & 0.891 $\pm$ 0.021 & 0.895 $\pm$ 0.048 \\
+AUROC & \textbf{0.895 $\pm$ 0.053} & 0.851 $\pm$ 0.080 & 0.881 $\pm$ 0.065 \\
+\hline
+\end{tabular}
+\vspace{0.4cm}
+
+\begin{itemize}
+\item[] \normalsize Channel-gated wins macro-F1, but does \textbf{not} dominate every metric.
+\item[] Image-only actually has higher sensitivity and AUROC --- reported honestly, not hidden.
+\item[] Balanced accuracy is effectively tied between image-only and channel-gated (0.784 vs.\ 0.783).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Quality-Aware Variant --- A Negative Result}
+Added an auxiliary head to predict image quality, hoping it would make the model more robust.
+
+\vspace{0.3cm}
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Channel-gated} & \textbf{+ Quality-aware} \\
+\hline
+Balanced accuracy & 0.783 & 0.740 \\
+Sensitivity & 0.672 & 0.578 \\
+Specificity & 0.895 & 0.902 \\
+AUROC & 0.881 & 0.879 \\
+\hline
+\end{tabular}
+\vspace{0.4cm}
+
+\raggedright
+\normalsize It \textbf{underperformed} on 5 of 6 metrics --- became more conservative (small specificity gain, big sensitivity loss). Worse direction for a cancer-screening task. Reported honestly as a negative result.
+\end{frame}
+
+\begin{frame}{Follow-Up Intervention Sweep (11 configurations)}
+\centering
+\tiny
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Configuration} & \textbf{Acc.} & \textbf{Bal.\ acc.} & \textbf{Sens.} & \textbf{Spec.} & \textbf{AUROC} \\
+\hline
+Focal loss & 0.858 & 0.809 & 0.694 & 0.923 & 0.877 \\
+Dermoscopy preprocessing & 0.828 & 0.793 & \textbf{0.736} & 0.851 & 0.875 \\
+Contrastive auxiliary loss & 0.812 & 0.770 & 0.669 & 0.872 & 0.873 \\
+Alt.\ optimizer (AdamW+cosine) & 0.822 & 0.757 & 0.661 & 0.853 & 0.845 \\
+Test-time augmentation (TTA) & 0.841 & 0.788 & 0.672 & 0.904 & 0.897 \\
+Multi-image averaging & 0.854 & 0.813 & 0.719 & 0.907 & 0.906 \\
+Sharpness-aware min.\ (SAM) & 0.858 & 0.810 & 0.694 & 0.927 & 0.904 \\
+SAM + multi-image & 0.851 & 0.800 & 0.672 & 0.928 & \textbf{0.917} \\
+\textbf{SAM + TTA} & \textbf{0.861} & \textbf{0.822} & 0.719 & 0.925 & 0.908 \\
+SAM + TTA + multi-image & 0.856 & 0.810 & 0.694 & 0.925 & 0.915 \\
+Preprocess.+focal+SAM+TTA & 0.818 & 0.759 & 0.622 & 0.895 & 0.893 \\
+\hline
+\end{tabular}
+\vspace{0.3cm}
+
+\normalsize \textbf{Best: SAM + TTA $\to$ 0.822 balanced accuracy.} Stacking everything together \textbf{hurt} rather than helped.
+\end{frame}
+
+\begin{frame}{Example Predictions (Best Method)}
+\centering
+\includegraphics[width=0.85\textwidth]{figures/example_gallery.png}
+\vspace{0.2cm}
+
+{\footnotesize Highest-confidence \emph{correct} predictions --- illustrative only, not representative of overall performance (see full metrics above).}
+\end{frame}
+
+% =================================================================
+\section{Robustness Analyses}
+\begin{frame}{Why Robustness Analyses Are the Real Contribution}
+\begin{itemize}
+\item Beating a prior number was never really possible --- \textbf{no prior benchmark exists on MCR-SL}.
+\item What MCR-SL uniquely offers: per-image expert quality ratings + partial histopathology confirmation.
+\item So the paper's actual novelty is asking questions no earlier skin-lesion benchmark could ask:
+\begin{enumerate}
+\item Does performance drop on lower-quality images?
+\item Can we train the model to be more robust to quality variation?
+\item Does performance differ on histopathology-confirmed vs.\ panel-consensus lesions?
+\item Does the model ``look at'' the same metadata fields that the dataset's own statistics flagged as significant?
+\end{enumerate}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{1. Quality-Stratified Performance}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/quality_tercile_clean.png}
+\column{0.5\textwidth}
+\centering
+\scriptsize
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Tercile} & \textbf{N} & \textbf{Acc.} & \textbf{Sens.} \\
+\hline
+Low & 85 & 0.776 & 0.667 \\
+Mid & 93 & 0.914 & 0.733 \\
+High & 53 & 0.868 & 0.500 \\
+\hline
+\end{tabular}
+\end{columns}
+
+\vspace{0.3cm}
+\normalsize Pattern is \textbf{not monotonic}. Spearman correlation (rating vs.\ error) $= -0.093$, $p=0.158$ --- not significant at $N=231$. No strong quality-performance relationship detected (neither confirmed nor ruled out).
+\end{frame}
+
+\begin{frame}{2. Quality-Aware Training --- Did It Help?}
+\centering
+\scriptsize
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Tercile} & \textbf{N} & \textbf{Acc.\ (plain)} & \textbf{Acc.\ (quality-aware)} \\
+\hline
+Low & 85 & 0.776 & 0.729 \\
+Mid & 93 & 0.914 & 0.903 \\
+High & 53 & 0.868 & 0.830 \\
+\hline
+\end{tabular}
+\vspace{0.4cm}
+
+\normalsize
+\begin{itemize}
+\item High$-$Low accuracy gap: \textbf{0.091 without} quality-awareness vs.\ \textbf{0.101 with} it.
+\item The intervention \textbf{widened}, rather than narrowed, the quality-performance gap.
+\item Direct negative result --- reported as such.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{3. Histopathology-Confirmed vs.\ Panel-Consensus}
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Group} & \textbf{N} & \textbf{Accuracy} \\
+\hline
+Histopathology-confirmed & 28 & 0.750 \\
+Panel-consensus-only & 203 & 0.867 \\
+\hline
+\end{tabular}
+\vspace{0.4cm}
+
+\normalsize
+\begin{itemize}
+\item Model performs \emph{worse} on the histopathology-confirmed subset.
+\item Plausible reason: histopathology is ordered more often for clinically \emph{ambiguous or suspicious} lesions in real practice --- these are inherently harder cases.
+\item $N=28$ is too small for a confidence interval --- treated as a \textbf{qualitative} finding only.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{4. Metadata Importance --- Does the Model ``Look at'' the Right Fields?}
+Method: ablate each field (replace with ``unknown''), measure change in output logit.
+\vspace{0.2cm}
+\centering
+\scriptsize
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Highest ranked} & \textbf{Importance} \\
+\hline
+Organ transplant history & 0.046 \\
+Lesion status when captured & 0.041 \\
+Referral diagnosis* & 0.024 \\
+Sex* & 0.015 \\
+Location group* & 0.011 \\
+\hline
+\textbf{Lowest ranked} & \\
+\hline
+Age / Weight / Diameter* / Height & $\le$0.0011 \\
+\hline
+\end{tabular}
+\hspace{0.4cm}
+\begin{minipage}{0.35\textwidth}
+\footnotesize
+* = field the dataset paper found significantly associated with malignancy.
+
+\vspace{0.3cm}
+Referral diagnosis, sex, location group align with the dataset paper. But \textbf{diameter} ranks lowest --- likely an architectural artifact (12-d categorical embeddings vs.\ 1 scalar), not true unimportance.
+\end{minipage}
+\end{frame}
+
+% =================================================================
+\section{Comparison \& Conclusion}
+\begin{frame}{Comparison with the Literature}
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Source} & \textbf{Task} & \textbf{N} & \textbf{Bal.\ acc.} \\
+\hline
+This work (channel-gated) & binary & 234 lesions & 0.783 \\
+This work (SAM + TTA) & binary & 234 lesions & \textbf{0.822} \\
+DiffMIC, PAD-UFES-20 (2025) & binary & 2298 images & 0.836 \\
+\hline
+\end{tabular}
+\vspace{0.4cm}
+
+\normalsize
+\begin{itemize}
+\item Closest verified binary-task comparator, on a similar-shape (image + metadata) dataset.
+\item We reach within 0.014 of it, with \textbf{$\sim$10$\times$ less training data}.
+\item No prior benchmark exists on MCR-SL itself, so this is not framed as ``beating state of the art'' --- the robustness analyses are the paper's real contribution.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Limitations}
+\begin{itemize}
+\item Small dataset: 234 usable lesions, single institution.
+\item Ground truth mostly panel-consensus (only 28/240 lesions histopathology-confirmed).
+\item Several 9-class categories have $<$10 lesions --- exploratory only.
+\item Quality terciles are modest in size ($N\approx$53--93) --- correlation results are not statistically decisive.
+\item Metadata-importance comparison is confounded by embedding-dimension imbalance (categorical vs.\ numeric fields).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusion \& Future Work}
+\begin{block}{What we found}
+\begin{itemize}
+\item First benchmark on MCR-SL: channel-gated fusion reaches 0.783 balanced accuracy; SAM + TTA pushes this to 0.822.
+\item Quality-aware training, contrastive loss, and alternative optimizers did \textbf{not} help at this scale.
+\item No significant quality-performance relationship detected; quality-aware training \emph{widened} rather than narrowed the tercile gap.
+\item Model performs worse on histopathology-confirmed lesions; metadata importance partially aligns with the dataset paper's own statistics.
+\end{itemize}
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Future work}
+Give numeric fields more representational capacity; try text-templated metadata encoding; revisit quality-aware training with a different loss weighting.
+\end{block}
+\end{frame}
+
+\begin{frame}
+\centering
+\Huge Thank you
+\vspace{0.5cm}
+
+\normalsize Questions?
+\end{frame}
+
+\end{document}

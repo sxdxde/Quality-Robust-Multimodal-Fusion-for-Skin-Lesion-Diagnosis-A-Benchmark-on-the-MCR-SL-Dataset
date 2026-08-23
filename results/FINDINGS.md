@@ -98,6 +98,7 @@ implemented, does not help robustness here.
 | channel_gated_tta | 0.841 | 0.788 | 0.765 | 0.672 | 0.904 | 0.897 | no (eval-only) |
 | channel_gated_contrastive | 0.812 | 0.771 | 0.734 | 0.669 | 0.872 | 0.873 | yes |
 | channel_gated_optimizerv2 (AdamW+cosine+discriminative-LR) | 0.822 | 0.757 | 0.731 | 0.661 | 0.853 | 0.845 | yes |
+| channel_gated_combined (preprocessing+focal+SAM+TTA) | 0.818 | 0.759 | 0.715 | 0.622 | 0.895 | 0.893 | yes + eval-only stack |
 
 ### What actually moved the needle, and what didn't
 - **SAM+AdamW, combined with TTA, is the overall best config** — 0.822 balanced accuracy,
@@ -124,6 +125,17 @@ implemented, does not help robustness here.
   complexity doesn't reliably help and sometimes hurts, while simple prediction-averaging
   (and, it turns out, sharpness-aware optimization) reliably does. Genuinely interesting
   discussion-section material — arguably more interesting than "our method wins."
+- **Stacking every individually-promising trick (preprocessing + focal loss + SAM + TTA)
+  underperforms both the winning combo AND the plain baseline** — 0.759 balanced accuracy,
+  below baseline's 0.783 and well below SAM+TTA's 0.822, with much higher variance across
+  folds (balanced-accuracy std 0.132, sensitivity std 0.285 — nearly half the mean).
+  Plausible explanation: focal loss and preprocessing pull the decision boundary in
+  different directions (specificity-favoring vs. sensitivity-favoring, per the point
+  above), and stacking them with SAM+TTA doesn't resolve that tension — it just adds
+  instability. A fourth, independent demonstration that "more interventions" isn't a
+  free lunch at this N — arguably the single most interesting negative result of the
+  sprint, since it's the most intuitive-sounding failed guess (each ingredient works
+  alone, so combining them "should" stack).
 
 ### Does anything cross 0.9?
 AUROC does, comfortably now — best config 0.915, several others 0.90–0.91. Balanced
@@ -131,12 +143,19 @@ accuracy tops out at 0.822 and sensitivity at 0.736. Given ~40 malignant lesions
 that ceiling on balanced accuracy/sensitivity is real, not a tuning gap — don't chase it
 further by tuning against these numbers.
 
-### Literature context (see prior discussion this session)
-Closest comparator, PAD-UFES-20 (metadata+image fusion, ~1,641 lesions — ~7x our N): best
+### Literature context (verified during the paper-writing/review pass — supersedes the
+earlier note below, kept struck through for the record rather than deleted)
+~~Closest comparator, PAD-UFES-20 (metadata+image fusion, ~1,641 lesions — ~7x our N): best
 published multimodal balanced accuracy there is 0.832. Our best (0.822) is within a hair
-of that despite ~7x less data — a legitimate, citable line for the paper. HAM10000/PH2
-headline numbers (accuracy 0.88–0.99) are not fair comparators — 40x+ more data and/or an
-easier task and/or looser evaluation rigor; don't cite them without heavy caveats.
+of that despite ~7x less data.~~ **This was wrong**: 0.832 (and MetaBlock's 0.765) are
+**six-class** balanced accuracy on PAD-UFES-20, not binary — not a valid comparator for
+our binary task despite the same metric name. The verified binary comparator is Uliana &
+Krohling 2025 (DiffMIC, arXiv:2504.00026), 0.836 balanced accuracy, cancer vs. non-cancer,
+5-fold CV, 2298 images — our best (0.822) is close to but below this. That paper also
+attributes a higher ~0.88 to an earlier ResNet-50 setup, sourced secondhand within their
+paper; not independently verified, reported in the paper as such rather than as a
+confirmed benchmark. HAM10000/PH2 headline numbers (accuracy 0.88–0.99) remain not fair
+comparators — 40x+ more data and/or an easier task and/or looser evaluation rigor.
 
 ## Robustness analyses (the actual novelty)
 
@@ -194,8 +213,9 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
 ## Not yet tried / explicitly out of scope this sprint
 - Optional stretch ablation: text-templated metadata + channel-gated fusion (CLAUDE.md
   §Optional stretch ablation) — only if time allows near the end.
-- Combining the winning eval-time tricks on top of focal loss or preprocessing (only ever
-  tested against plain baseline and SAM) — untested combination, possible but not run.
+- ~~Combining the winning eval-time tricks on top of focal loss or preprocessing~~ —
+  **done**: `channel_gated_combined` (preprocessing+focal+SAM+TTA) tested, negative result
+  (0.759 bal. acc., below both baseline and SAM+TTA, high variance) — see above.
 - Broader SAM rho sweep, ASAM variant — one fixed rho=0.05 tested, no sweep (would be
   tuning against final numbers).
 - **Decided:** robustness analyses 1/3/4 stay on `channel_gated` (CLAUDE.md's designated
