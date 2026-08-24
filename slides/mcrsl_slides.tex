@@ -5,6 +5,7 @@
 \setbeamertemplate{footline}[frame number]
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{colortbl}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric}
 \usepackage{amsmath,amssymb}
@@ -154,6 +155,26 @@ $\to$ global pool $\to$ same 256-d projection $\to$ classifier.\\[4pt]
 \end{block}
 \end{frame}
 
+\begin{frame}{Architecture --- Three Prediction Heads}
+All three heads sit on top of the \textbf{same} 256-d fused vector; only their outputs and losses differ.
+\vspace{0.15cm}
+\begin{block}{1. Binary head (main task, always on)}
+256-d $\to$ Linear $\to$ 1 logit $\to$ sigmoid $\to$ $P$(malignant). \\
+Loss: weighted BCE (or focal loss), class weights recomputed per training fold ($\sim$1:4.6 malignant:non-malignant). \\
+\emph{This is the only head whose output is reported as the paper's headline results.}
+\end{block}
+\begin{block}{2. Auxiliary 9-class head (exploratory)}
+256-d $\to$ Linear $\to$ 9 logits $\to$ softmax $\to$ unified diagnosis (NEV, SK, BCC, \ldots). \\
+Loss: class-weighted CE, downweighted to $\sim$0.3--0.5$\times$ the binary loss. \\
+\emph{Reported only as an exploratory table --- several classes have $<$10 lesions.}
+\end{block}
+\begin{block}{3. Quality-regression head (optional, quality-aware variant only)}
+256-d $\to$ Linear $\to$ 1 scalar $\to$ predicted mean expert quality rating (1--10). \\
+Loss: MSE, weighted 0.1--0.2$\times$. \\
+\emph{Tests whether explicit quality-awareness improves robustness --- it did not (see Robustness Analyses).}
+\end{block}
+\end{frame}
+
 \begin{frame}{Full Pipeline (with a Real Example)}
 \centering
 \resizebox{\textwidth}{!}{
@@ -221,17 +242,53 @@ $\to$ global pool $\to$ same 256-d projection $\to$ classifier.\\[4pt]
 \end{block}
 \end{frame}
 
-\begin{frame}{Evaluation Metrics}
-Reported as mean $\pm$ std across the 5 test folds:
+\begin{frame}{The 5 Folds, Visualized}
+60 subjects $\to$ 5 disjoint folds (balanced by malignant-lesion count). Every rotation uses a \textbf{different} test fold and a different, disjoint val fold --- so all 5 folds eventually serve as the test fold exactly once.
+\vspace{0.3cm}
+\centering
+\begin{tabular}{c|ccccc}
+\textbf{Rotation} & \textbf{Fold 0} & \textbf{Fold 1} & \textbf{Fold 2} & \textbf{Fold 3} & \textbf{Fold 4} \\
+\hline
+1 & \cellcolor{red!25}Test & \cellcolor{orange!35}Val & Train & Train & Train \\
+2 & Train & \cellcolor{red!25}Test & \cellcolor{orange!35}Val & Train & Train \\
+3 & Train & Train & \cellcolor{red!25}Test & \cellcolor{orange!35}Val & Train \\
+4 & Train & Train & Train & \cellcolor{red!25}Test & \cellcolor{orange!35}Val \\
+5 & \cellcolor{orange!35}Val & Train & Train & Train & \cellcolor{red!25}Test \\
+\end{tabular}
+\vspace{0.4cm}
+
 \begin{itemize}
-\item Accuracy
-\item \textbf{Balanced accuracy} (primary metric --- malignant class is a minority)
-\item Macro-F1
-\item Sensitivity (recall) on the malignant class --- critical for cancer screening
-\item Specificity
-\item AUROC
-\item Confusion matrix, aggregated across folds
+\item \textbf{Train} folds: model weights are updated here.
+\item \textbf{Val} fold: used only to pick the best training checkpoint (never influences weights).
+\item \textbf{Test} fold: touched exactly once, only for final reported metrics --- never used for any decision.
 \end{itemize}
+\vspace{0.2cm}
+Final numbers = mean $\pm$ std of the 5 \textbf{test}-fold results (one per rotation).
+\end{frame}
+
+\begin{frame}{Evaluation Metrics --- What Each One Means}
+\centering
+\scriptsize
+\begin{tabular}{|l|p{4.3cm}|p{4.7cm}|}
+\hline
+\textbf{Metric} & \textbf{Definition} & \textbf{Why it matters here} \\
+\hline
+Accuracy & (correct predictions) / (all predictions) & Can be misleading: predicting ``non-malignant'' always still scores $\sim$82\% \\
+\hline
+\textbf{Balanced accuracy} & average of sensitivity and specificity & \textbf{Primary metric} --- corrects for the malignant class being a minority ($\sim$18\%) \\
+\hline
+Macro-F1 & F1 (precision/recall harmonic mean) averaged equally across both classes & Rewards doing well on \emph{both} classes, not just the majority one \\
+\hline
+Sensitivity (recall) & (malignant caught) / (all actual malignant) & Missed malignancy = missed cancer diagnosis --- the costliest error clinically \\
+\hline
+Specificity & (non-malignant cleared) / (all actual non-malignant) & Low specificity means unnecessary biopsies/patient anxiety \\
+\hline
+AUROC & probability the model ranks a random malignant lesion above a random non-malignant one & Threshold-independent measure of overall ranking quality \\
+\hline
+\end{tabular}
+\vspace{0.3cm}
+
+\normalsize All reported as mean $\pm$ std across the 5 test folds, plus a confusion matrix aggregated across all folds.
 \end{frame}
 
 % =================================================================
