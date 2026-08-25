@@ -1,6 +1,8 @@
 # MCR-SL Findings (working notes for the INDICON 2026 write-up)
 
-Last updated: 2026-08-20. All planned experiments complete, including SAM(AdamW).
+Last updated: 2026-08-26. Core matrix + extended experiments complete; quality-adaptive
+loss reweighting follow-up in progress (see new section below) — hard_mining is the current
+best single result, SAM+TTA-on-hard_mining and SWA experiments queued/running.
 
 ## Task & protocol
 Binary malignant vs. non-malignant lesion classification, MCR-SL dataset (240 lesions,
@@ -179,6 +181,161 @@ comparators — 40x+ more data and/or an easier task and/or looser evaluation ri
    single z-scored scalar per numeric field), not evidence that diameter is clinically
    uninformative — worth a line in the discussion, not a redesign this sprint.
 
+## Quality-adaptive loss reweighting (follow-up to robustness analysis #2)
+
+Motivation: the auxiliary quality-prediction head (analysis #2 above) failed — predicting
+image quality as a side objective made things worse everywhere. Face-recognition literature
+(MagFace; AdaFace, Kim et al., CVPR 2022, arXiv:2204.00964 — verified directly, not taken on
+faith) shows a mechanistically different lever, quality-adaptive *loss weighting* rather than
+quality *prediction*, helps under low-quality inputs. `QUALITY_ADAPTIVE_LOSS_TASK.md` tests
+this on `channel_gated` (main method only, `quality_aware=False` — a distinct mechanism from
+the auxiliary head, not a retry of it).
+
+**Implementation**: a per-sample multiplicative weight on the binary BCE loss, derived from
+each lesion's existing `mean_image_rating` (same E001/E003/E004 computation already used for
+analysis #1 — reused, not recomputed). Two directions:
+- **trust**: `w = 0.5 + (rating-1)/9`, maps rating [1,10] -> weight [0.5, 1.5] (down-weights
+  low-quality/less-reliable samples).
+- **hard_mining**: `w = 1.5 - (rating-1)/9`, maps [1,10] -> [1.5, 0.5] (up-weights low-quality
+  samples, forcing the model to work harder on them).
+Samples with no valid rating get a neutral weight of 1.0. `models/heads.py:BinaryHead.loss`
+verified to reproduce the exact old loss when `sample_weight=None` (byte-for-byte, unit
+tested) — no other run's results are affected by this change.
+
+| run | accuracy | balanced_acc | macro_F1 | sensitivity(malig) | specificity | AUROC |
+|---|---|---|---|---|---|---|
+| channel_gated (plain baseline) | 0.833 | 0.783 | 0.757 | 0.672 | 0.895 | 0.881 |
+| channel_gated_qweight_trust | 0.793 | 0.788 | 0.721 | 0.725 | 0.850 | 0.869 |
+| **channel_gated_qweight_hard_mining** | **0.845** | **0.820** | 0.778 | **0.764** | 0.875 | 0.906 |
+
+**`hard_mining` is the new best single result on the core dimensions** — beats plain
+`channel_gated` by +0.037 balanced accuracy, +0.092 sensitivity (the clinically weightier
+metric — a missed malignancy costs more than a false alarm), +0.025 AUROC. Nearly matches
+`channel_gated_sam_adamw_tta` (0.822 balanced acc, the previous best) while *exceeding* it on
+sensitivity (0.764 vs. 0.719). `trust` is roughly flat on core metrics (+0.005 balanced acc,
+within the ~0.08 fold-to-fold std — not a robust difference) but is the mechanism that
+narrows the quality-tercile gap, below.
+
+**Quality-tercile gap, extending analysis #2's table to a three-way (four-mechanism)
+comparison** (high-minus-low tercile accuracy gap, channel_gated, N=231):
+
+| mechanism | high−low accuracy gap |
+|---|---|
+| plain (no quality-awareness) | 0.091 |
+| auxiliary quality-prediction head | 0.101 (worse — analysis #2's original finding) |
+| loss reweight: trust | **0.082 (narrower — first success across 3 mechanisms tried)** |
+| loss reweight: hard_mining | 0.091 (unchanged from plain) |
+
+Three distinct quality-awareness mechanisms, three different outcomes — report as a nuanced,
+non-monolithic finding, not "quality-awareness helps" or "doesn't help" as a single verdict:
+- **Auxiliary head**: net negative everywhere (both core metrics and the tercile gap).
+- **trust**: the only mechanism that narrows the quality-robustness gap specifically, without
+  materially hurting sensitivity or AUROC (sensitivity actually rose vs. plain).
+- **hard_mining**: doesn't touch the tercile gap (unchanged from plain, 0.091) but delivers
+  the largest raw performance gain project-wide. Plausible mechanism: up-weighting
+  low-quality samples acts as a general hard-example-mining regularizer that sharpens the
+  whole model roughly proportionally across all quality levels, rather than specifically
+  closing the quality-tercile gap — a coherent story, not a loose end.
+
+### Root cause diagnosis: why balanced accuracy plateaus around 0.78–0.82
+
+From full per-epoch training logs (`logs/train_channel_gated_qweight_{trust,hard_mining}.log`,
+5 folds each): **val_bacc oscillates by 0.15–0.25 between *adjacent* epochs in every single
+fold**, never settling into a smooth convergence curve (e.g. hard_mining fold 0:
+0.88 → 0.64 → 0.86 → 0.77 → 0.69 → ... across just the first 5 epochs). Train loss collapses
+to near-zero (0.01–0.05) by epoch 15–20 in most folds — heavy overfitting on top of an
+already-noisy validation signal. Occasional mid-training train_loss spikes (e.g.
+0.03 → 0.36 at epoch 19, fold 0 trust) are consistent with a few high-loss-weight outlier
+batches (malignant + low-quality samples, combined weight ≈ pos_weight×1.5 ≈ 6.9 under
+hard_mining) occasionally destabilizing a gradient step.
+
+**Consequence**: the existing "pick the single epoch with highest val_bacc" checkpoint
+selection rule (used for every config in this project, not just the quality-weight ones) is
+likely capturing noise spikes rather than converged states — test balanced accuracy swings
+0.70–0.93 fold-to-fold for `hard_mining` alone. This is very likely the dominant remaining
+gap to DiffMIC's 0.836 (2298 images vs. our 234 lesions — ~10x less data means proportionally
+noisier per-fold estimates, an inherent MCR-SL-scale limitation, not something a loss-formula
+change alone can fix). Stochastic Weight Averaging (Izmailov et al. 2018; SWAD, Cha et al.
+2021) is documented in the literature as the established fix for exactly this failure mode
+(noisy-validation checkpoint selection in place of a clean validation set) — see "queued"
+below.
+
+### Follow-up interventions attempted on top of hard_mining — mixed/negative results
+
+**Free (no retraining) — val-optimal threshold recalibration.** Per-fold Youden's-J threshold
+selected on the val fold only, applied to the held-out test fold (no test-fold peeking). No
+reliable gain: `hard_mining` balanced accuracy actually *worsened* (0.8195 → 0.8052);
+`trust`/`plain` were roughly flat (+0.0015 / +0.0098, within noise). The thresholds picked
+per fold ranged wildly (e.g. 0.005 to 0.937 for `hard_mining`) — confirms the val-fold signal
+is itself too noisy at this N (8–9 malignant lesions per val fold) to reliably calibrate a
+threshold, not just to select a checkpoint. Script: `scripts/optimal_threshold_eval.py`.
+
+**LDAM-style class margin (Cao et al., NeurIPS 2019) + gradient clipping, stacked on
+`hard_mining`.** Motivated by the sensitivity-vs-specificity gap (0.764 vs. 0.875) and the
+training-instability spikes above; margin formula `C/n_j^0.25` (C=0.5, standard LDAM
+constant, not tuned) gives the minority (malignant) class the larger training-time margin,
+intended to push sensitivity up. Result: **net negative** — balanced accuracy 0.798 (−0.022
+vs. `hard_mining` alone), sensitivity 0.697 (**−0.067, the opposite of the intended
+direction**), specificity 0.899 (+0.024). Margin and gradient clipping were bundled into one
+run rather than isolated, so attribution between the two pieces is unclear — a real
+methodological shortcut taken under time pressure. Third negative/mixed result in the
+quality-awareness search overall, alongside the auxiliary head. Config:
+`channel_gated_hardmining_ldam_stable`.
+
+**Queued/running as of this update, results not yet in:**
+- `channel_gated_hardmining_sam_tta` — SAM optimizer + TTA stacked on `hard_mining`. Lower
+  risk than the LDAM+clip attempt: both pieces (SAM, TTA) are already independently
+  validated as positive on this exact dataset (SAM alone: 0.811 balanced acc;
+  TTA: free, no retraining), rather than new untested mechanisms.
+- `channel_gated_swa` (plain, isolates how much of the fold-to-fold variance documented
+  above is checkpoint-selection noise alone) and `channel_gated_hardmining_swa` (SWA stacked
+  on the best loss variant) — Stochastic Weight Averaging replacing the single-best-epoch
+  rule with a BN-recalibrated running average over the last 25% of training. Implementation
+  verified end-to-end locally (toy multi-input model matching this project's custom
+  `forward()` signature) before running: `AveragedModel` deep-copies rather than aliases the
+  source model, weight averaging accumulates correctly, BN recalibration measurably changes
+  the running stats vs. the naive average, and the resulting state_dict loads cleanly into a
+  fresh model instance. Scripts: `scripts/run_hardmining_sam_tta.sh`,
+  `scripts/run_swa_experiments.sh`.
+
+### Literature grounding for the novelty claim
+
+Verified via direct search rather than taken on faith from the task brief that motivated this
+work: **AdaFace (Kim et al., CVPR 2022, arXiv:2204.00964)** is real, legitimate precedent —
+quality-adaptive margin/emphasis in face recognition. Its mechanism is more nuanced than
+either of our two linear variants: it uses a **feature-norm proxy** for quality (not a
+ground-truth label), and for samples it estimates as low-quality it **emphasizes easy
+samples** (avoiding forced separation on ambiguous/degraded inputs) — the *opposite*
+direction from our `hard_mining` variant, which up-weights low-quality samples and is
+empirically the one that worked here. No skin-lesion or broader medical-imaging paper was
+found using **real expert-assigned** per-image quality ratings (as opposed to saliency
+scores, automated quality thresholds, or inter-annotator label-reliability weighting) as a
+loss-reweighting signal for classification — this gap appears genuine on the literature
+searched, not just asserted.
+
+**Defensible novelty framing**: first application of quality-adaptive loss reweighting to
+skin lesion classification using real expert-assigned quality labels rather than an estimated
+proxy, finding empirically the opposite weighting direction from the closest face-recognition
+precedent helps in this domain — plausibly because MCR-SL's "low quality" reflects
+photography artifacts (lighting, focus, hair) in an image the diagnosing dermatologist still
+successfully labeled from, unlike face-ID matching where low quality can make the identity
+itself unrecoverable from the image. **Not** defensible: claiming this beats SOTA outright —
+`hard_mining` (0.820) remains below the verified DiffMIC comparator (0.836).
+
+### Data-integrity incident: ledger dedup bug (see also "Known data/pipeline caveats" below)
+
+A `drop_duplicates(subset=['variant','fold'])` fix for a genuine duplicate-fold-entry bug
+(caused by an interrupted-and-restarted training run appending a stale extra ledger row)
+incorrectly also deleted the plain `channel_gated` (quality_aware=False) baseline's 5 ledger
+rows — the ledger's `variant` column is actually `run_tag`, and the plain and auxiliary-head
+(`quality_aware=True`) runs both share that run_tag (distinguished only by `quality_aware`,
+which the dedup subset didn't key on). Recovered without retraining by re-evaluating the
+untouched checkpoints (`channel_gated_qualityFalse_fold{0-4}.pt`) and re-appending fresh
+metrics — recovered values matched the originally-reported numbers to 4 decimal places
+(accuracy 0.8326, balanced_accuracy 0.7834, AUROC 0.8814), confirming no data was actually
+lost, only temporarily absent from the ledger CSV. Script:
+`scripts/recover_plain_baseline_ledger.py`.
+
 ## Are these scores good?
 
 For a **first benchmark on a brand-new, 240-lesion dataset**, yes — this is a respectable,
@@ -209,6 +366,12 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   fixed (`sync_to_remote.sh` now excludes `results/` and `logs/` entirely — those only
   flow remote→local via `pull_remote_results.sh`), and the ledger was rebuilt correctly
   from checkpoints. No impact on any trained model or checkpoint, only on the CSV log.
+- A second, separate ledger incident: a `drop_duplicates` fix for a duplicate-fold-entry bug
+  (from an interrupted/restarted training run) didn't key on `quality_aware` and accidentally
+  deleted the plain `channel_gated` baseline's 5 ledger rows (it shares `run_tag="channel_gated"`
+  with the `quality_aware=True` auxiliary-head run). Recovered by re-evaluating the untouched
+  checkpoints — recovered values matched the original numbers to 4 decimal places, no data
+  actually lost. See "Quality-adaptive loss reweighting" section above for full detail.
 
 ## Not yet tried / explicitly out of scope this sprint
 - Optional stretch ablation: text-templated metadata + channel-gated fusion (CLAUDE.md
@@ -223,3 +386,13 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   Keeps the paper's structure clean — core ablation matrix + robustness analysis on the
   designated method as one section, the extended experiments (SAM, TTA, focal, etc.) as a
   separate follow-up results section, not conflated into "the main result."
+- **In progress, not yet decided:** whether `channel_gated_qweight_hard_mining` (new best
+  single result, 0.820 balanced acc / 0.764 sensitivity) replaces
+  `channel_gated_sam_adamw_tta` as the paper's reported best follow-up config, or whether
+  the queued SAM+TTA-on-hard_mining / SWA results (see "Quality-adaptive loss reweighting"
+  section) push higher still. Do not lock in the paper's headline number until those return.
+- Explicitly ruled a stop point after LDAM+grad-clip's negative result and the threshold
+  check's non-result: no third loss-formula variant beyond SAM+TTA-on-hard_mining and SWA
+  (both already queued) — continuing to search risks the exact p-hacking pattern flagged
+  when this quality-adaptive-loss task was first scoped. SAM+TTA and SWA are the last two
+  attempts before writing up whatever the ceiling turns out to be.
