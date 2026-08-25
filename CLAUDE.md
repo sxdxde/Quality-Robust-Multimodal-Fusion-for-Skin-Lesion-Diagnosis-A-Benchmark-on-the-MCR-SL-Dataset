@@ -22,6 +22,20 @@ completely different (much smaller) dataset.
 
 ---
 
+## STATUS UPDATE (read this first)
+Everything below this point was the original kickoff brief. Since then, the core ablation
+(image-only / late-fusion / channel-gated), the SAM+TTA intervention sweep, and the four
+robustness analyses have all been run — results exist in the master ledger and a draft paper.
+**The novelty framing has been sharpened based on reviewer feedback:** the channel-gated fusion
+architecture, SAM optimizer, and 5-fold protocol are solid engineering but are **not** the
+paper's novelty claim — none of them are new mechanisms, and none of them require MCR-SL
+specifically. The actual novel contribution is a **quality-adaptive loss function** (full spec
+in `QUALITY_ADAPTIVE_LOSS_TASK.md`, a companion file to this one) — this is the current
+priority task and should be treated as the headline experiment for the paper, with everything
+above supporting it rather than competing with it for the novelty claim.
+
+---
+
 ## Task Definition
 - **Primary task:** binary malignant vs. non-malignant lesion classification.
 - **Secondary/auxiliary task:** 9-class unified diagnosis (NEV, SK, BCC, AK, ATY, MEL, SCC,

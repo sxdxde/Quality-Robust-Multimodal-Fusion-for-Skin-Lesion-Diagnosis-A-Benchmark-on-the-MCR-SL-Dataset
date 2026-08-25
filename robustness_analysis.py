@@ -83,9 +83,14 @@ def get_fold_assignment(lesion_df, n_folds: int, seed: int):
 @torch.no_grad()
 def collect_oof_predictions(cfg_variant: str, quality_aware: bool, lesion_df, image_index_df,
                              subjects_by_fold: dict, n_folds: int, checkpoint_dir: Path,
-                             image_size: int, batch_size: int, device) -> pd.DataFrame:
+                             image_size: int, batch_size: int, device, ckpt_tag: str = None) -> pd.DataFrame:
     """One row per (lesion, fold-it-was-tested-in), with binary AND aux
-    predictions — every lesion gets exactly one out-of-fold prediction."""
+    predictions — every lesion gets exactly one out-of-fold prediction.
+
+    `ckpt_tag` overrides the checkpoint filename prefix (default: tag(cfg_variant,
+    quality_aware)) for run_tags that don't follow the variant_qualityBool
+    pattern, e.g. follow-up experiments like channel_gated_qweight_trust
+    (see scripts/quality_adaptive_loss_analysis.py)."""
     rows = []
     for test_fold in range(n_folds):
         val_fold = (test_fold + 1) % n_folds
@@ -97,7 +102,7 @@ def collect_oof_predictions(cfg_variant: str, quality_aware: bool, lesion_df, im
         test_ds = MCRSLDataset(lesion_df, image_index_df, test_subjects, numeric_stats, image_size, "test", False, verbose=False)
         test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, collate_fn=collate_fn, num_workers=2)
 
-        ckpt_path = checkpoint_dir / f"{tag(cfg_variant, quality_aware)}_fold{test_fold}.pt"
+        ckpt_path = checkpoint_dir / f"{ckpt_tag or tag(cfg_variant, quality_aware)}_fold{test_fold}.pt"
         model = MCRSLModel(variant=cfg_variant, quality_aware=quality_aware).to(device)
         model.load_state_dict(torch.load(ckpt_path, map_location=device, weights_only=True))
         model.eval()

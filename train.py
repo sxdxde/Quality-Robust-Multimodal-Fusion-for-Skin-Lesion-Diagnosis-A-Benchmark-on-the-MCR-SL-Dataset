@@ -54,6 +54,23 @@ def compute_aux_class_weights(lesion_df, subject_ids, num_classes: int) -> torch
     return torch.tensor(weights, dtype=torch.float32)
 
 
+def compute_quality_sample_weight(quality_target: torch.Tensor, has_quality_rating: torch.Tensor, mode: str) -> torch.Tensor:
+    """Per-sample multiplicative loss weight from each lesion's expert-rated
+    image quality (QUALITY_ADAPTIVE_LOSS_TASK.md). `quality_target` is the
+    same rating/10.0 value already computed for the quality-aware auxiliary
+    head (data/dataset.py) — recovered here as rating = quality_target*10,
+    not recomputed. Samples with no valid rating get a neutral weight of 1.0.
+    """
+    rating = quality_target * 10.0
+    if mode == "trust":
+        w = 0.5 + (rating - 1.0) / 9.0 * 1.0
+    elif mode == "hard_mining":
+        w = 1.5 - (rating - 1.0) / 9.0 * 1.0
+    else:
+        raise ValueError(f"unknown quality_weight_mode {mode!r}")
+    return torch.where(has_quality_rating, w, torch.ones_like(w))
+
+
 def move_batch(batch, device):
     batch["image"] = batch["image"].to(device)
     batch["binary_label"] = batch["binary_label"].to(device)
@@ -101,9 +118,14 @@ def compute_loss(model, batch, device, cfg: TrainConfig, pos_weight, aux_weights
 
     mask = batch["has_binary_label"]
     if mask.sum() > 0:
+        sample_weight = None
+        if cfg.quality_weight_mode != "none":
+            sample_weight = compute_quality_sample_weight(
+                batch["quality_target"], batch["has_quality_rating"], cfg.quality_weight_mode,
+            )[mask]
         binary_loss = BinaryHead.loss(
             out["binary_logits"][mask], batch["binary_label"][mask],
-            pos_weight=pos_weight, focal_gamma=cfg.focal_gamma,
+            pos_weight=pos_weight, focal_gamma=cfg.focal_gamma, sample_weight=sample_weight,
         )
     else:
         binary_loss = torch.tensor(0.0, device=device)
@@ -292,6 +314,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--lr", type=float, default=None)
     parser.add_argument("--focal-gamma", type=float, default=None)
+    parser.add_argument("--quality-weight-mode", default=None, choices=["none", "trust", "hard_mining"])
     parser.add_argument("--use-preprocessing", action="store_true")
     parser.add_argument("--use-contrastive", action="store_true")
     parser.add_argument("--contrastive-weight", type=float, default=None)
@@ -312,6 +335,8 @@ def main():
         cfg.lr = args.lr
     if args.focal_gamma is not None:
         cfg.focal_gamma = args.focal_gamma
+    if args.quality_weight_mode is not None:
+        cfg.quality_weight_mode = args.quality_weight_mode
     if args.use_preprocessing:
         cfg.use_dermoscopy_preprocessing = True
     if args.use_contrastive:

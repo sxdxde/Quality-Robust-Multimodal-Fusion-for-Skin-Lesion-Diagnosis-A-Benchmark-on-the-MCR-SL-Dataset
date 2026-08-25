@@ -26,6 +26,15 @@ class TrainConfig:
     quality_loss_weight: float = 0.15
     focal_gamma: float = 0.0  # 0 = plain weighted BCE; >0 switches binary head to focal
 
+    # Quality-adaptive loss reweighting (QUALITY_ADAPTIVE_LOSS_TASK.md) — a
+    # per-sample multiplicative weight on the binary loss, derived from each
+    # lesion's expert-rated image quality (distinct from quality_aware,
+    # which instead adds an auxiliary quality-prediction head).
+    # "none": no reweighting (default, existing behavior unchanged).
+    # "trust": down-weight low-quality (less reliable) samples, [1,10]->[0.5,1.5].
+    # "hard_mining": up-weight low-quality samples, [1,10]->[1.5,0.5].
+    quality_weight_mode: str = "none"
+
     # If True, train on all dermoscopic images per lesion (more signal at
     # N=240); eval always aggregates back to one prediction per lesion using
     # the diagnosis_image_id image, per CLAUDE.md eval protocol. Logged here

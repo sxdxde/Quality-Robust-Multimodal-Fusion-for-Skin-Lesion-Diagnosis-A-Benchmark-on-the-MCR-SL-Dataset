@@ -23,7 +23,8 @@ class BinaryHead(nn.Module):
         return self.fc(x).squeeze(-1)  # (B,) logits
 
     @staticmethod
-    def loss(logits: torch.Tensor, targets: torch.Tensor, pos_weight: torch.Tensor = None, focal_gamma: float = 0.0) -> torch.Tensor:
+    def loss(logits: torch.Tensor, targets: torch.Tensor, pos_weight: torch.Tensor = None, focal_gamma: float = 0.0,
+              sample_weight: torch.Tensor = None) -> torch.Tensor:
         if focal_gamma > 0:
             bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
             p_t = torch.exp(-bce)
@@ -31,7 +32,13 @@ class BinaryHead(nn.Module):
             if pos_weight is not None:
                 alpha = torch.where(targets == 1, pos_weight, torch.ones_like(targets))
                 focal_weight = focal_weight * alpha
-            return (focal_weight * bce).mean()
+            per_sample = focal_weight * bce
+            if sample_weight is not None:
+                per_sample = per_sample * sample_weight
+            return per_sample.mean()
+        if sample_weight is not None:
+            bce = F.binary_cross_entropy_with_logits(logits, targets, pos_weight=pos_weight, reduction="none")
+            return (bce * sample_weight).mean()
         return F.binary_cross_entropy_with_logits(logits, targets, pos_weight=pos_weight)
 
 
