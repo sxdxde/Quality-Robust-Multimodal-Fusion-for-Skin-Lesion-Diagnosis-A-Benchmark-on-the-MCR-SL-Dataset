@@ -43,8 +43,8 @@ ssh -t "${DELL_USERNAME}@${DELL_IP}"'
 SERVER_USER="cs24d0010"
 SERVER_HOST="172.16.1.199"
 
-echo "connected to the jump nigga"
+echo "connected to the jump host"
 echo "connecting to the A100 now"
 
-ssh -X ${SERVER_USER}@{SERVER_HOST}
+ssh -X ${SERVER_USER}@${SERVER_HOST}
 '

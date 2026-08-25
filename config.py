@@ -35,6 +35,15 @@ class TrainConfig:
     # "hard_mining": up-weight low-quality samples, [1,10]->[1.5,0.5].
     quality_weight_mode: str = "none"
 
+    # Diagnosed from channel_gated_qweight_{trust,hard_mining}'s training logs:
+    # val_bacc oscillates wildly epoch-to-epoch (checkpoint selection is
+    # capturing noise spikes, not converged states) and train_loss shows
+    # occasional destabilizing jumps mid-training. Both opt-in (default off)
+    # so no already-reported run's methodology silently changes.
+    grad_clip_norm: float = 0.0  # 0 = disabled; clip_grad_norm_ max_norm otherwise
+    use_ldam_margin: bool = False  # LDAM-style (Cao et al. 2019) class margin on the binary head
+    ldam_margin_c: float = 0.5  # standard LDAM constant, not tuned/searched here
+
     # If True, train on all dermoscopic images per lesion (more signal at
     # N=240); eval always aggregates back to one prediction per lesion using
     # the diagnosis_image_id image, per CLAUDE.md eval protocol. Logged here

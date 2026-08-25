@@ -24,7 +24,16 @@ class BinaryHead(nn.Module):
 
     @staticmethod
     def loss(logits: torch.Tensor, targets: torch.Tensor, pos_weight: torch.Tensor = None, focal_gamma: float = 0.0,
-              sample_weight: torch.Tensor = None) -> torch.Tensor:
+              sample_weight: torch.Tensor = None, margin_pos: float = 0.0, margin_neg: float = 0.0) -> torch.Tensor:
+        """`margin_pos`/`margin_neg` (LDAM-style, Cao et al. 2019): shifts the
+        logit fed into the loss for malignant/non-malignant samples
+        respectively, so the network must clear a bigger gap to correctly
+        classify the minority (malignant) class during training — a
+        training-time-only regularizer on the decision boundary, distinct
+        from pos_weight/sample_weight which only scale the loss magnitude.
+        Eval/predict paths use raw model logits and are unaffected."""
+        if margin_pos != 0.0 or margin_neg != 0.0:
+            logits = logits - margin_pos * targets + margin_neg * (1.0 - targets)
         if focal_gamma > 0:
             bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
             p_t = torch.exp(-bce)

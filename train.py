@@ -46,6 +46,18 @@ def compute_binary_pos_weight(lesion_df, subject_ids) -> torch.Tensor:
     return torch.tensor(n_neg / max(n_pos, 1), dtype=torch.float32)
 
 
+def compute_ldam_margins(lesion_df, subject_ids, c: float) -> tuple[float, float]:
+    """LDAM-style (Cao et al. 2019) per-class margin: C / n_j^0.25, so the
+    minority (malignant) class gets a larger training-time margin than the
+    majority class, computed from this fold's train-subject counts only."""
+    labels = lesion_df[lesion_df["subject_id"].isin(subject_ids)]["binary_label"].dropna()
+    n_pos = max(int((labels == 1.0).sum()), 1)
+    n_neg = max(int((labels == 0.0).sum()), 1)
+    margin_pos = c / (n_pos ** 0.25)
+    margin_neg = c / (n_neg ** 0.25)
+    return margin_pos, margin_neg
+
+
 def compute_aux_class_weights(lesion_df, subject_ids, num_classes: int) -> torch.Tensor:
     labels = lesion_df[lesion_df["subject_id"].isin(subject_ids)]["aux_label"].dropna().astype(int)
     counts = np.array([(labels == c).sum() for c in range(num_classes)])
@@ -113,7 +125,7 @@ def build_optimizer(model: torch.nn.Module, cfg: TrainConfig):
     return optimizer, scheduler
 
 
-def compute_loss(model, batch, device, cfg: TrainConfig, pos_weight, aux_weights) -> torch.Tensor:
+def compute_loss(model, batch, device, cfg: TrainConfig, pos_weight, aux_weights, margins=(0.0, 0.0)) -> torch.Tensor:
     out = model(batch["image"], batch["categorical"], batch["numerical"], batch["numerical_missing"])
 
     mask = batch["has_binary_label"]
@@ -123,9 +135,11 @@ def compute_loss(model, batch, device, cfg: TrainConfig, pos_weight, aux_weights
             sample_weight = compute_quality_sample_weight(
                 batch["quality_target"], batch["has_quality_rating"], cfg.quality_weight_mode,
             )[mask]
+        margin_pos, margin_neg = margins if cfg.use_ldam_margin else (0.0, 0.0)
         binary_loss = BinaryHead.loss(
             out["binary_logits"][mask], batch["binary_label"][mask],
             pos_weight=pos_weight, focal_gamma=cfg.focal_gamma, sample_weight=sample_weight,
+            margin_pos=margin_pos, margin_neg=margin_neg,
         )
     else:
         binary_loss = torch.tensor(0.0, device=device)
@@ -146,7 +160,7 @@ def compute_loss(model, batch, device, cfg: TrainConfig, pos_weight, aux_weights
     return loss
 
 
-def run_epoch(model, loader, device, optimizer, cfg: TrainConfig, pos_weight, aux_weights, train: bool):
+def run_epoch(model, loader, device, optimizer, cfg: TrainConfig, pos_weight, aux_weights, train: bool, margins=(0.0, 0.0)):
     model.train() if train else model.eval()
     total_loss = 0.0
     n_batches = 0
@@ -157,16 +171,22 @@ def run_epoch(model, loader, device, optimizer, cfg: TrainConfig, pos_weight, au
             batch = move_batch(batch, device)
 
             if train and is_sam:
-                loss = compute_loss(model, batch, device, cfg, pos_weight, aux_weights)
+                loss = compute_loss(model, batch, device, cfg, pos_weight, aux_weights, margins)
                 loss.backward()
+                if cfg.grad_clip_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
                 optimizer.first_step(zero_grad=True)
-                compute_loss(model, batch, device, cfg, pos_weight, aux_weights).backward()
+                compute_loss(model, batch, device, cfg, pos_weight, aux_weights, margins).backward()
+                if cfg.grad_clip_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
                 optimizer.second_step(zero_grad=True)
             else:
-                loss = compute_loss(model, batch, device, cfg, pos_weight, aux_weights)
+                loss = compute_loss(model, batch, device, cfg, pos_weight, aux_weights, margins)
                 if train:
                     optimizer.zero_grad()
                     loss.backward()
+                    if cfg.grad_clip_norm > 0:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
                     optimizer.step()
 
             total_loss += loss.item()
@@ -257,6 +277,7 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
 
         pos_weight = compute_binary_pos_weight(lesion_df, train_subjects).to(device)
         aux_weights = compute_aux_class_weights(lesion_df, train_subjects, cfg.num_aux_classes).to(device)
+        margins = compute_ldam_margins(lesion_df, train_subjects, cfg.ldam_margin_c) if cfg.use_ldam_margin else (0.0, 0.0)
 
         model = MCRSLModel(
             variant=cfg.variant,
@@ -270,7 +291,7 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
         best_val_bacc = -1.0
         best_state = None
         for epoch in range(cfg.epochs):
-            train_loss = run_epoch(model, train_loader, device, optimizer, cfg, pos_weight, aux_weights, train=True)
+            train_loss = run_epoch(model, train_loader, device, optimizer, cfg, pos_weight, aux_weights, train=True, margins=margins)
             if scheduler is not None:
                 scheduler.step()
             val_metrics = evaluate_loader(model, val_loader, device)
@@ -315,6 +336,9 @@ def main():
     parser.add_argument("--lr", type=float, default=None)
     parser.add_argument("--focal-gamma", type=float, default=None)
     parser.add_argument("--quality-weight-mode", default=None, choices=["none", "trust", "hard_mining"])
+    parser.add_argument("--grad-clip-norm", type=float, default=None, help="0/unset = disabled; clip_grad_norm_ max_norm otherwise")
+    parser.add_argument("--use-ldam-margin", action="store_true")
+    parser.add_argument("--ldam-margin-c", type=float, default=None)
     parser.add_argument("--use-preprocessing", action="store_true")
     parser.add_argument("--use-contrastive", action="store_true")
     parser.add_argument("--contrastive-weight", type=float, default=None)
@@ -337,6 +361,12 @@ def main():
         cfg.focal_gamma = args.focal_gamma
     if args.quality_weight_mode is not None:
         cfg.quality_weight_mode = args.quality_weight_mode
+    if args.grad_clip_norm is not None:
+        cfg.grad_clip_norm = args.grad_clip_norm
+    if args.use_ldam_margin:
+        cfg.use_ldam_margin = True
+    if args.ldam_margin_c is not None:
+        cfg.ldam_margin_c = args.ldam_margin_c
     if args.use_preprocessing:
         cfg.use_dermoscopy_preprocessing = True
     if args.use_contrastive:
