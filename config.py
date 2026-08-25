@@ -44,6 +44,14 @@ class TrainConfig:
     use_ldam_margin: bool = False  # LDAM-style (Cao et al. 2019) class margin on the binary head
     ldam_margin_c: float = 0.5  # standard LDAM constant, not tuned/searched here
 
+    # Stochastic Weight Averaging (Izmailov et al. 2018): replaces the
+    # single-noisy-epoch checkpoint-selection rule above with a running
+    # average of weights over the last (1-swa_start_frac) of training,
+    # BN-recalibrated afterward (update_bn_custom). When True, best_val_bacc
+    # tracking is skipped entirely for that fold — SWA is the checkpoint.
+    use_swa: bool = False
+    swa_start_frac: float = 0.75  # standard SWA convention: start after ~75% of training
+
     # If True, train on all dermoscopic images per lesion (more signal at
     # N=240); eval always aggregates back to one prediction per lesion using
     # the diagnosis_image_id image, per CLAUDE.md eval protocol. Logged here

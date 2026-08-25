@@ -27,6 +27,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+from torch.optim.swa_utils import AveragedModel
 from torch.utils.data import DataLoader
 
 from config import TrainConfig
@@ -81,6 +82,33 @@ def compute_quality_sample_weight(quality_target: torch.Tensor, has_quality_rati
     else:
         raise ValueError(f"unknown quality_weight_mode {mode!r}")
     return torch.where(has_quality_rating, w, torch.ones_like(w))
+
+
+@torch.no_grad()
+def update_bn_custom(loader, swa_model, device):
+    """Recalibrates BatchNorm running stats for an AveragedModel after weight
+    averaging (averaged weights need freshly-computed BN statistics — naively
+    averaging running_mean/running_var across epochs isn't a valid running
+    stat). Reimplements torch.optim.swa_utils.update_bn's logic by hand,
+    since that helper assumes `model(input)` with a single tensor input and
+    this model's forward takes (image, categorical, numerical, missing)."""
+    momenta = {}
+    for module in swa_model.modules():
+        if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+            module.reset_running_stats()
+            momenta[module] = module.momentum
+    if not momenta:
+        return
+    for module in momenta:
+        module.momentum = None
+
+    swa_model.train()
+    for batch in loader:
+        batch = move_batch(batch, device)
+        swa_model(batch["image"], batch["categorical"], batch["numerical"], batch["numerical_missing"])
+
+    for module, momentum in momenta.items():
+        module.momentum = momentum
 
 
 def move_batch(batch, device):
@@ -288,6 +316,9 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
         ).to(device)
         optimizer, scheduler = build_optimizer(model, cfg)
 
+        swa_model = AveragedModel(model) if cfg.use_swa else None
+        swa_start_epoch = int(cfg.swa_start_frac * cfg.epochs) if cfg.use_swa else None
+
         best_val_bacc = -1.0
         best_state = None
         for epoch in range(cfg.epochs):
@@ -297,9 +328,21 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
             val_metrics = evaluate_loader(model, val_loader, device)
             print(f"[{run_tag} fold {test_fold}] epoch {epoch+1}/{cfg.epochs} train_loss={train_loss:.4f} "
                   f"val_bacc={val_metrics['balanced_accuracy']:.4f} val_auroc={val_metrics['auroc']:.4f}")
-            if val_metrics["balanced_accuracy"] > best_val_bacc:
+
+            if cfg.use_swa:
+                if epoch >= swa_start_epoch:
+                    swa_model.update_parameters(model)
+                    print(f"[{run_tag} fold {test_fold}] epoch {epoch+1}: SWA average updated (started at epoch {swa_start_epoch+1})")
+            elif val_metrics["balanced_accuracy"] > best_val_bacc:
                 best_val_bacc = val_metrics["balanced_accuracy"]
                 best_state = copy.deepcopy(model.state_dict())
+
+        if cfg.use_swa:
+            update_bn_custom(train_loader, swa_model, device)
+            best_state = swa_model.module.state_dict()
+            swa_val_metrics = evaluate_loader(swa_model.module, val_loader, device)
+            print(f"[{run_tag} fold {test_fold}] SWA (epochs {swa_start_epoch+1}-{cfg.epochs}, BN-recalibrated) "
+                  f"val_bacc={swa_val_metrics['balanced_accuracy']:.4f} val_auroc={swa_val_metrics['auroc']:.4f}")
 
         model.load_state_dict(best_state)
         test_df = predict(model, test_loader, device, tta=cfg.use_tta)
@@ -339,6 +382,8 @@ def main():
     parser.add_argument("--grad-clip-norm", type=float, default=None, help="0/unset = disabled; clip_grad_norm_ max_norm otherwise")
     parser.add_argument("--use-ldam-margin", action="store_true")
     parser.add_argument("--ldam-margin-c", type=float, default=None)
+    parser.add_argument("--use-swa", action="store_true", help="replaces single-best-epoch checkpoint selection with BN-recalibrated weight averaging over the last (1-swa-start-frac) of training")
+    parser.add_argument("--swa-start-frac", type=float, default=None)
     parser.add_argument("--use-preprocessing", action="store_true")
     parser.add_argument("--use-contrastive", action="store_true")
     parser.add_argument("--contrastive-weight", type=float, default=None)
@@ -367,6 +412,10 @@ def main():
         cfg.use_ldam_margin = True
     if args.ldam_margin_c is not None:
         cfg.ldam_margin_c = args.ldam_margin_c
+    if args.use_swa:
+        cfg.use_swa = True
+    if args.swa_start_frac is not None:
+        cfg.swa_start_frac = args.swa_start_frac
     if args.use_preprocessing:
         cfg.use_dermoscopy_preprocessing = True
     if args.use_contrastive:
