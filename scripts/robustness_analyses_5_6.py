@@ -199,6 +199,44 @@ def analysis_5_certainty(oof: pd.DataFrame, lesion_df: pd.DataFrame, derm_df: pd
     print(f"\nSpearman(certainty, image_rating) = {rho_cross:+.3f} (p={p_cross:.3f}, N={len(q)}) "
           f"— how far the two axes are measuring the same thing at all")
 
+    # --- Controlling for class composition -------------------------------
+    # Malignant lesions concentrate in the low-certainty buckets (experts are
+    # less sure about the harder, more suspicious lesions), and the model is
+    # weaker on malignant lesions generally. So a pooled certainty-vs-error
+    # correlation is partly just picking up class mix. Recomputing within each
+    # class separates "certainty tracks difficulty" from "low-certainty
+    # buckets simply hold more malignant lesions".
+    print("\nControlling for class composition (malignant lesions cluster at low certainty,")
+    print("and the model is weaker on them — so the pooled correlation is confounded):")
+    strat_rows = []
+    for label, name in [(0.0, "non-malignant"), (1.0, "malignant")]:
+        sub = df[df["binary_label"] == label]
+        n_sub = len(sub)
+        n_err = int(sub["error"].sum())
+        if n_sub < 3 or sub["error"].nunique() < 2:
+            print(f"  {name:<14} n={n_sub:<4} — too few/degenerate to correlate "
+                  f"({n_err} errors); reported as-is, not computed")
+            strat_rows.append({"stratum": name, "n": n_sub, "n_errors": n_err,
+                               "spearman_vs_error": float("nan"), "p_error": float("nan")})
+            continue
+        r, p = spearmanr(sub["mean_certainty"], sub["error"])
+        print(f"  {name:<14} n={n_sub:<4} errors={n_err:<4} "
+              f"Spearman(certainty, error) = {r:+.3f} (p={p:.3f})")
+        strat_rows.append({"stratum": name, "n": n_sub, "n_errors": n_err,
+                           "spearman_vs_error": r, "p_error": p})
+
+    strat = pd.DataFrame(strat_rows)
+    strat.to_csv(results_dir / f"robustness_certainty_by_class_{cfg_tag}.csv", index=False)
+    print("  -> If the relationship holds WITHIN each class, certainty is tracking genuine")
+    print("     diagnostic difficulty. If it vanishes, the pooled result was class mix.")
+
+    # Class balance per bucket, so the confound is visible in the table itself.
+    summary["pct_malignant"] = (summary["n_malignant"] / summary["n"] * 100).round(1)
+    summary.to_csv(results_dir / f"robustness_certainty_tercile_{cfg_tag}.csv", index=False)
+    print(f"\nClass balance per bucket (the confound, made explicit):")
+    print(summary[["bucket", "n", "n_malignant", "pct_malignant", "accuracy",
+                   "sensitivity_malignant"]].to_string(index=False))
+
     fig, ax = plt.subplots(figsize=(5.5, 4))
     ax.bar(summary["bucket"].astype(str), summary["accuracy"], color="tab:purple")
     ax.set_ylabel("Accuracy")
@@ -315,7 +353,7 @@ def analysis_6_intra_subject(oof: pd.DataFrame, lesion_df: pd.DataFrame,
     summary.to_csv(results_dir / f"robustness_intra_subject_summary_{cfg_tag}.csv", index=False)
 
     fig, ax = plt.subplots(figsize=(5.5, 4))
-    ax.hist(multi["accuracy"], bins=np.linspace(0, 1, 11), color="tab:teal", edgecolor="white")
+    ax.hist(multi["accuracy"], bins=np.linspace(0, 1, 11), color="tab:cyan", edgecolor="white")
     ax.axvline(overall_acc, color="black", linestyle="--", linewidth=1,
                label=f"overall lesion accuracy = {overall_acc:.3f}")
     ax.set_xlabel("Per-subject accuracy")
