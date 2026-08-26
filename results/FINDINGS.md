@@ -1,8 +1,10 @@
 # MCR-SL Findings (working notes for the INDICON 2026 write-up)
 
-Last updated: 2026-08-26. Core matrix + extended experiments complete; quality-adaptive
-loss reweighting follow-up in progress (see new section below) — hard_mining is the current
-best single result, SAM+TTA-on-hard_mining and SWA experiments queued/running.
+Last updated: 2026-08-26. Core matrix + extended experiments complete; quality-adaptive loss
+reweighting follow-up in progress (see new section below) — `hard_mining` (alone) is the
+current best single result. Three separate attempts to stack something on top of it
+(LDAM+grad-clip, SAM+TTA, SWA) have all made it worse; only `channel_gated_swa` (plain, no
+quality weight) remains queued as the last isolating result before stopping the search.
 
 ## Task & protocol
 Binary malignant vs. non-malignant lesion classification, MCR-SL dataset (240 lesions,
@@ -282,21 +284,46 @@ methodological shortcut taken under time pressure. Third negative/mixed result i
 quality-awareness search overall, alongside the auxiliary head. Config:
 `channel_gated_hardmining_ldam_stable`.
 
-**Queued/running as of this update, results not yet in:**
-- `channel_gated_hardmining_sam_tta` — SAM optimizer + TTA stacked on `hard_mining`. Lower
-  risk than the LDAM+clip attempt: both pieces (SAM, TTA) are already independently
-  validated as positive on this exact dataset (SAM alone: 0.811 balanced acc;
-  TTA: free, no retraining), rather than new untested mechanisms.
-- `channel_gated_swa` (plain, isolates how much of the fold-to-fold variance documented
-  above is checkpoint-selection noise alone) and `channel_gated_hardmining_swa` (SWA stacked
-  on the best loss variant) — Stochastic Weight Averaging replacing the single-best-epoch
-  rule with a BN-recalibrated running average over the last 25% of training. Implementation
-  verified end-to-end locally (toy multi-input model matching this project's custom
-  `forward()` signature) before running: `AveragedModel` deep-copies rather than aliases the
-  source model, weight averaging accumulates correctly, BN recalibration measurably changes
-  the running stats vs. the naive average, and the resulting state_dict loads cleanly into a
-  fresh model instance. Scripts: `scripts/run_hardmining_sam_tta.sh`,
-  `scripts/run_swa_experiments.sh`.
+**SAM optimizer + TTA, stacked on `hard_mining`.** Lower a priori risk than the LDAM+clip
+attempt — both pieces (SAM, TTA) are already independently validated as positive on this
+exact dataset (SAM alone: 0.811 balanced acc; TTA: free, no retraining) rather than new
+untested mechanisms. Result: **net negative anyway** — balanced accuracy 0.789 (−0.031 vs.
+`hard_mining` alone, and below plain SAM+TTA's own 0.822), specificity 0.816 (well below both
+`hard_mining` alone at 0.875 and plain SAM+TTA at 0.925), AUROC 0.886 (−0.020). Sensitivity
+held roughly flat (0.761 vs. 0.764). Plausible mechanism: SAM computes its adversarial
+perturbation direction from the *already quality-reweighted* loss surface — with a few
+malignant+low-quality samples carrying up to ~6.9x effective weight, SAM's worst-case-
+neighborhood search likely chases robustness around those few outlier-weighted samples
+rather than genuine model-wide flatness. Config: `channel_gated_hardmining_sam_tta`.
+
+**Stochastic Weight Averaging, stacked on `hard_mining`.** Result: again **net negative** —
+balanced accuracy 0.807 (−0.013 vs. `hard_mining` alone), and, like the auxiliary head and
+LDAM+clip before it, the model becomes markedly *more conservative*: sensitivity dropped to
+0.675 (−0.089, the worst sensitivity of any `hard_mining`-family config), specificity rose to
+0.939 (+0.064), AUROC fell to 0.856 (−0.051). SWA did deliver on its literal promise —
+fold-to-fold **accuracy** variance genuinely tightened (std 0.080 → 0.035, more than half),
+confirming the averaged checkpoint is more stable — but a more stable checkpoint that's
+stably biased toward specificity isn't the improvement being sought for a cancer-screening
+task. Config: `channel_gated_hardmining_swa`.
+
+**Three independent interventions stacked on `hard_mining` (LDAM+clip, SAM+TTA, SWA) have
+now all made it worse**, each by a different mechanism. This is a strong, consistent signal
+that `hard_mining`'s benefit is a standalone effect at this dataset's scale, not a base to
+build further improvements on — worth stating plainly, and it mirrors the original ablation
+matrix's own finding that `channel_gated_combined` (stacking preprocessing+focal+SAM+TTA)
+underperformed every individual ingredient.
+
+**Still queued, result not yet in:** `channel_gated_swa` (plain `channel_gated`, no quality
+reweighting, SWA only) — the actual isolating experiment for the root-cause question above:
+how much of the project's fold-to-fold variance is checkpoint-selection noise alone,
+independent of `hard_mining` or any loss-function change. Given the pattern above, this is
+intended as the last new result before stopping the search and locking in `hard_mining`
+(alone) as the headline follow-up config, regardless of what it shows. Implementation
+verified end-to-end locally before running (toy multi-input model matching this project's
+custom `forward()` signature): `AveragedModel` deep-copies rather than aliases the source
+model, weight averaging accumulates correctly, BN recalibration measurably changes the
+running stats vs. the naive average, and the resulting state_dict loads cleanly into a fresh
+model instance. Script: `scripts/run_swa_experiments.sh`.
 
 ### Literature grounding for the novelty claim
 
@@ -386,13 +413,16 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   Keeps the paper's structure clean — core ablation matrix + robustness analysis on the
   designated method as one section, the extended experiments (SAM, TTA, focal, etc.) as a
   separate follow-up results section, not conflated into "the main result."
-- **In progress, not yet decided:** whether `channel_gated_qweight_hard_mining` (new best
-  single result, 0.820 balanced acc / 0.764 sensitivity) replaces
-  `channel_gated_sam_adamw_tta` as the paper's reported best follow-up config, or whether
-  the queued SAM+TTA-on-hard_mining / SWA results (see "Quality-adaptive loss reweighting"
-  section) push higher still. Do not lock in the paper's headline number until those return.
-- Explicitly ruled a stop point after LDAM+grad-clip's negative result and the threshold
-  check's non-result: no third loss-formula variant beyond SAM+TTA-on-hard_mining and SWA
-  (both already queued) — continuing to search risks the exact p-hacking pattern flagged
-  when this quality-adaptive-loss task was first scoped. SAM+TTA and SWA are the last two
-  attempts before writing up whatever the ceiling turns out to be.
+- **Decided (pending only the final `channel_gated_swa` isolating result):**
+  `channel_gated_qweight_hard_mining` (alone — 0.820 balanced acc / 0.764 sensitivity /
+  0.906 AUROC) replaces `channel_gated_sam_adamw_tta` as the paper's reported best follow-up
+  config. Every attempt to build on top of it (LDAM+grad-clip, SAM+TTA, SWA — three
+  independent mechanisms) made it worse, so it stands as-is rather than as a base for
+  further stacking.
+- Explicitly ruled a stop point after LDAM+grad-clip, the threshold check, SAM+TTA, and
+  hard_mining+SWA all came back negative or non-improving: no further loss-formula or
+  training-modification variants beyond the one remaining queued result
+  (`channel_gated_swa`, plain, isolating the checkpoint-noise question independent of
+  `hard_mining`) — continuing to search risks the exact p-hacking pattern flagged when this
+  quality-adaptive-loss task was first scoped. `channel_gated_swa` is the last result before
+  writing up the ceiling as it stands.
