@@ -8,9 +8,14 @@ worse. The final diagnostic (`channel_gated_swa`, isolating checkpoint-selection
 any loss-function change) shows the remaining balanced-accuracy variance is mostly an
 inherent small-N (~8-9 malignant lesions/fold) sampling floor, not a fixable pipeline
 artifact — so prediction-level checkpoint ensembling (prepared but not run) was skipped as
-unlikely to help for the same reason. Moving to writing with the two-finding framing: `trust`
-(quality-robustness result, narrows the tercile gap) + `hard_mining` (best raw-performance
-result, a general hard-example-mining effect, not a quality-robustness one).
+unlikely to help for the same reason. **The shuffled-quality control (below) changed the
+two-finding framing**: `hard_mining`'s raw-performance gain survives an information-matched
+shuffled-rating control (collapses back to baseline when the ratings are shuffled), but
+`trust`'s tercile-gap narrowing does *not* survive the same control — a content-free shuffled
+weighting produces an even smaller gap, which reads as a generic-reweighting artifact rather
+than genuine quality-awareness. Final framing: `hard_mining` is the paper's one validated
+quality-adaptive-loss contribution; `trust` is reported as a negative/null result after the
+control, alongside the auxiliary-quality-head failure.
 
 ## Task & protocol
 Binary malignant vs. non-malignant lesion classification, MCR-SL dataset (240 lesions,
@@ -231,19 +236,25 @@ comparison** (high-minus-low tercile accuracy gap, channel_gated, N=231):
 |---|---|
 | plain (no quality-awareness) | 0.091 |
 | auxiliary quality-prediction head | 0.101 (worse — analysis #2's original finding) |
-| loss reweight: trust | **0.082 (narrower — first success across 3 mechanisms tried)** |
+| loss reweight: trust | ~~0.082 (narrower — first success across 3 mechanisms tried)~~ **does not
+survive the shuffled-quality control below — see that section** |
 | loss reweight: hard_mining | 0.091 (unchanged from plain) |
 
 Three distinct quality-awareness mechanisms, three different outcomes — report as a nuanced,
 non-monolithic finding, not "quality-awareness helps" or "doesn't help" as a single verdict:
 - **Auxiliary head**: net negative everywhere (both core metrics and the tercile gap).
-- **trust**: the only mechanism that narrows the quality-robustness gap specifically, without
-  materially hurting sensitivity or AUROC (sensitivity actually rose vs. plain).
+- ~~**trust**: the only mechanism that narrows the quality-robustness gap specifically, without
+  materially hurting sensitivity or AUROC (sensitivity actually rose vs. plain).~~ **Superseded
+  by the shuffled-quality control** (see "Shuffled-quality control" section below, added after
+  this was first written): a content-free shuffled-rating control produces an even narrower gap
+  than the real `trust` result, so this apparent narrowing is not distinguishable from a
+  generic-reweighting artifact — report `trust` as a negative/null result, not a success.
 - **hard_mining**: doesn't touch the tercile gap (unchanged from plain, 0.091) but delivers
   the largest raw performance gain project-wide. Plausible mechanism: up-weighting
   low-quality samples acts as a general hard-example-mining regularizer that sharpens the
   whole model roughly proportionally across all quality levels, rather than specifically
-  closing the quality-tercile gap — a coherent story, not a loose end.
+  closing the quality-tercile gap — a coherent story, not a loose end. **The shuffled-quality
+  control below confirms this gain is genuine (not generic reweighting).**
 
 ### Root cause diagnosis: why balanced accuracy plateaus around 0.78–0.82
 
@@ -408,6 +419,66 @@ metrics — recovered values matched the originally-reported numbers to 4 decima
 lost, only temporarily absent from the ledger CSV. Script:
 `scripts/recover_plain_baseline_ledger.py`.
 
+### Shuffled-quality control (validity check — closes out the quality-adaptive-loss search)
+
+A control experiment, not a further search: tests whether `trust`/`hard_mining`'s results are
+attributable to the quality signal's actual information content, or to generic per-sample
+reweighting regardless of what the weights mean. For each fold, `mean_image_rating` was
+permuted across that fold's *training* lesions only (fixed seed = fold index), breaking the
+lesion-to-rating correspondence while preserving the exact rating distribution; `w_quality` was
+then computed from the shuffled values via the unmodified `trust`/`hard_mining` formulas.
+Architecture, protocol, and checkpoint selection were otherwise identical, and evaluation
+always used the true, unshuffled test fold (quality was never shuffled at eval time). Configs:
+`channel_gated_qweight_trust_shuffled`, `channel_gated_qweight_hardmining_shuffled` (scripts:
+`train.py --shuffle-quality-control`, `scripts/run_shuffled_quality_control.sh`,
+`scripts/shuffled_quality_control_analysis.py`).
+
+| mechanism | balanced_acc | sensitivity | high−low tercile gap |
+|---|---|---|---|
+| plain baseline (no quality-awareness) | 0.783 | 0.672 | 0.091 |
+| trust (real) | 0.788 | 0.725 | 0.082 |
+| **trust (shuffled control)** | 0.763 | 0.672 | **0.021** |
+| hard_mining (real) | **0.820** | **0.764** | 0.091 |
+| **hard_mining (shuffled control)** | **0.775** | **0.667** | 0.016 |
+
+**`hard_mining`'s gain is real, not generic reweighting.** Its target metric (raw balanced
+accuracy) collapses from 0.820 (real) to 0.775 (shuffled) — landing at essentially the plain
+baseline (0.783), even fractionally below it; sensitivity shows the identical pattern (0.764 →
+0.667, landing right at plain's 0.672). An uninformative, distribution-matched-but-shuffled
+weight gives back none of `hard_mining`'s benefit — the effect depends on the weights actually
+tracking each lesion's real quality, confirming genuine information-bearing reweighting rather
+than an "any per-sample noise helps" regularization trick.
+
+**`trust`'s tercile-gap result does not survive the control, and not in the direction that was
+worried about going in.** The failure mode flagged in the task spec was "shuffled stays close
+to real" (i.e., a generic effect masquerading as quality-specific). What happened instead: the
+shuffled control's gap (0.021) is *smaller* than both the real result (0.082) and the plain
+baseline (0.091) — an even more "flattened" tercile profile than the mechanism actually
+designed to flatten it, produced by weights carrying zero real quality information. Per-tercile
+accuracy under the shuffled control is non-monotonic (low 0.753, mid 0.882, high 0.774) rather
+than a smoother quality-linked shape, consistent with generic per-sample-weight noise
+redistributing errors across terciles somewhat arbitrarily rather than the model becoming
+quality-aware. Combined with a real drop in raw performance under the shuffled control
+(balanced accuracy 0.788 → 0.763, sensitivity 0.725 → 0.672 — landing exactly on the plain
+baseline's 0.672), the honest reading is that `trust`'s original, already-modest gap narrowing
+(0.091 → 0.082, ~10% relative, on tercile Ns of 53–93 where a swing this size is well within
+plausible sampling noise per this project's own established small-N caution) is **not robustly
+distinguishable from what content-free reweighting can produce**. This walks back the earlier
+framing ("first success across 3 mechanisms tried") — `trust`'s quality-robustness claim is
+unconfirmed by this control, not validated by it.
+
+**Net effect on the paper's framing**: `hard_mining` survives as the headline quality-adaptive-
+loss result — real quality-aware reweighting materially outperforms both the plain baseline and
+an information-matched shuffled control, on the metric that matters for it (raw balanced
+accuracy/sensitivity). `trust` does not survive as a quality-robustness finding — the control
+suggests its narrower tercile gap is plausibly a generic-reweighting artifact rather than
+evidence the model is exploiting the real quality signal. Report `hard_mining` as the paper's
+one validated quality-adaptive-loss contribution; report `trust` as a negative/null result
+after the control, alongside the auxiliary-quality-head failure — not as a second positive
+mechanism. **Per the task scope, this closes out the quality-adaptive-loss search alongside
+`channel_gated_swa` and the (skipped) prediction-ensembling check — no further controls or
+variants.**
+
 ## Are these scores good?
 
 For a **first benchmark on a brand-new, 240-lesion dataset**, yes — this is a respectable,
@@ -468,7 +539,14 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   or (for the last one) confirming the remaining variance is an inherent small-N floor rather
   than a fixable pipeline artifact. Prediction-level checkpoint ensembling (Step 2 of the
   close-out task) was prepared and verified but deliberately not run, since Step 1 already
-  answered the question it was meant to test. No further loss-formula, optimizer, or
-  training-modification variants beyond this point — continuing would risk the exact
-  p-hacking pattern flagged when this quality-adaptive-loss task was first scoped. Writing up
-  the ceiling as it stands: `trust` for quality-robustness, `hard_mining` for raw performance.
+  answered the question it was meant to test. The shuffled-quality control (see that section
+  above) was the last scoped item: it confirmed `hard_mining`'s raw-performance gain is real
+  (collapses to plain baseline under a content-free shuffled control) but showed `trust`'s
+  tercile-gap narrowing does not survive the same control (the shuffled version narrows the
+  gap *further*, most plausibly a generic-reweighting artifact). No further loss-formula,
+  optimizer, training-modification, or control variants beyond this point — continuing would
+  risk the exact p-hacking pattern flagged when this quality-adaptive-loss task was first
+  scoped. **Final ceiling, as it now stands: `hard_mining` alone (0.820 balanced acc / 0.764
+  sensitivity / 0.906 AUROC) is the paper's one validated quality-adaptive-loss result, for
+  raw performance; `trust` is reported as a negative/null quality-robustness result, alongside
+  the auxiliary-quality-head failure — not as a second success.**
