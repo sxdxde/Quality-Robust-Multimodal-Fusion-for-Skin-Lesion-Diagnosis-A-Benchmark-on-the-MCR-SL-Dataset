@@ -52,6 +52,14 @@ class TrainConfig:
     use_swa: bool = False
     swa_start_frac: float = 0.75  # standard SWA convention: start after ~75% of training
 
+    # Prediction-level checkpoint ensembling: saves the top-N val-balanced-
+    # accuracy epoch checkpoints per fold (in addition to the usual single
+    # best), for averaging predicted probabilities across them at eval time
+    # (scripts/checkpoint_ensemble_eval.py). Mechanistically distinct from
+    # SWA (weight-space averaging) and multi-image TTA (image-space
+    # averaging) — this is prediction-space averaging across snapshots.
+    save_topk: int = 0  # 0 = disabled (default, no behavior change for any existing run)
+
     # If True, train on all dermoscopic images per lesion (more signal at
     # N=240); eval always aggregates back to one prediction per lesion using
     # the diagnosis_image_id image, per CLAUDE.md eval protocol. Logged here

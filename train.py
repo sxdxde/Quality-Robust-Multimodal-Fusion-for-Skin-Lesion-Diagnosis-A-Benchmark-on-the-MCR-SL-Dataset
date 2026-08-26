@@ -321,6 +321,7 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
 
         best_val_bacc = -1.0
         best_state = None
+        topk_checkpoints = []  # list of (val_bacc, cpu state_dict), sorted desc, len<=cfg.save_topk
         for epoch in range(cfg.epochs):
             train_loss = run_epoch(model, train_loader, device, optimizer, cfg, pos_weight, aux_weights, train=True, margins=margins)
             if scheduler is not None:
@@ -336,6 +337,19 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
             elif val_metrics["balanced_accuracy"] > best_val_bacc:
                 best_val_bacc = val_metrics["balanced_accuracy"]
                 best_state = copy.deepcopy(model.state_dict())
+
+            if cfg.save_topk > 0:
+                cpu_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+                topk_checkpoints.append((val_metrics["balanced_accuracy"], cpu_state))
+                topk_checkpoints.sort(key=lambda x: -x[0])
+                topk_checkpoints = topk_checkpoints[:cfg.save_topk]
+
+        if cfg.save_topk > 0:
+            ckpt_dir = Path(cfg.checkpoint_dir)
+            ckpt_dir.mkdir(parents=True, exist_ok=True)
+            for rank, (vb, state) in enumerate(topk_checkpoints):
+                torch.save(state, ckpt_dir / f"{run_tag}_quality{cfg.quality_aware}_fold{test_fold}_top{rank}.pt")
+                print(f"[{run_tag} fold {test_fold}] saved top-{rank} checkpoint (val_bacc={vb:.4f})")
 
         if cfg.use_swa:
             update_bn_custom(train_loader, swa_model, device)
@@ -384,6 +398,7 @@ def main():
     parser.add_argument("--ldam-margin-c", type=float, default=None)
     parser.add_argument("--use-swa", action="store_true", help="replaces single-best-epoch checkpoint selection with BN-recalibrated weight averaging over the last (1-swa-start-frac) of training")
     parser.add_argument("--swa-start-frac", type=float, default=None)
+    parser.add_argument("--save-topk", type=int, default=None, help="additionally save the top-N val-balanced-accuracy epoch checkpoints per fold, for prediction-level ensembling")
     parser.add_argument("--use-preprocessing", action="store_true")
     parser.add_argument("--use-contrastive", action="store_true")
     parser.add_argument("--contrastive-weight", type=float, default=None)
@@ -416,6 +431,8 @@ def main():
         cfg.use_swa = True
     if args.swa_start_frac is not None:
         cfg.swa_start_frac = args.swa_start_frac
+    if args.save_topk is not None:
+        cfg.save_topk = args.save_topk
     if args.use_preprocessing:
         cfg.use_dermoscopy_preprocessing = True
     if args.use_contrastive:
