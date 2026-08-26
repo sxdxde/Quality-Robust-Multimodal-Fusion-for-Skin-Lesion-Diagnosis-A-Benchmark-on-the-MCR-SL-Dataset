@@ -35,6 +35,16 @@ class TrainConfig:
     # "hard_mining": up-weight low-quality samples, [1,10]->[1.5,0.5].
     quality_weight_mode: str = "none"
 
+    # Shuffled-quality control (validity check for quality_weight_mode, not a
+    # new search — see the "shuffled-quality control" task). When True, the
+    # training-fold `mean_image_rating` values are permuted across that
+    # fold's training lesions (fixed seed = test_fold) before w_quality is
+    # computed, breaking the true lesion-to-rating correspondence while
+    # preserving the exact rating distribution. Val/test always use the real,
+    # unshuffled ratings — this only ever touches the train split's weights.
+    # No effect when quality_weight_mode == "none".
+    quality_shuffle_control: bool = False
+
     # Diagnosed from channel_gated_qweight_{trust,hard_mining}'s training logs:
     # val_bacc oscillates wildly epoch-to-epoch (checkpoint selection is
     # capturing noise spikes, not converged states) and train_loss shows

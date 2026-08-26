@@ -67,6 +67,24 @@ def compute_aux_class_weights(lesion_df, subject_ids, num_classes: int) -> torch
     return torch.tensor(weights, dtype=torch.float32)
 
 
+def build_shuffled_quality_df(lesion_df: pd.DataFrame, train_subjects: set, seed: int) -> pd.DataFrame:
+    """Shuffled-quality control (validity check, not a new search): returns a
+    copy of lesion_df where `mean_image_rating` is permuted across the
+    training-fold lesions only (fixed seed = test_fold, for reproducibility).
+    This breaks the true lesion-to-rating correspondence while preserving
+    the exact rating distribution among those lesions. Non-train rows (val,
+    test) are untouched here — the caller only ever feeds this into the
+    train Dataset; val/test Datasets are built from the real, unshuffled
+    lesion_df so quality-tercile evaluation always uses true ratings.
+    """
+    df = lesion_df.copy()
+    mask = df["subject_id"].isin(train_subjects)
+    rng = np.random.RandomState(seed)
+    values = df.loc[mask, "mean_image_rating"].to_numpy()
+    df.loc[mask, "mean_image_rating"] = rng.permutation(values)
+    return df
+
+
 def compute_quality_sample_weight(quality_target: torch.Tensor, has_quality_rating: torch.Tensor, mode: str) -> torch.Tensor:
     """Per-sample multiplicative loss weight from each lesion's expert-rated
     image quality (QUALITY_ADAPTIVE_LOSS_TASK.md). `quality_target` is the
@@ -292,7 +310,11 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
 
         numeric_stats = fit_numeric_stats(lesion_df, train_subjects)
 
-        train_ds = MCRSLDataset(lesion_df, image_index_df, train_subjects, numeric_stats, cfg.image_size, "train",
+        train_lesion_df = lesion_df
+        if cfg.quality_shuffle_control:
+            train_lesion_df = build_shuffled_quality_df(lesion_df, train_subjects, seed=test_fold)
+
+        train_ds = MCRSLDataset(train_lesion_df, image_index_df, train_subjects, numeric_stats, cfg.image_size, "train",
                                  cfg.train_on_all_dermoscopic_images, use_preprocessing=cfg.use_dermoscopy_preprocessing)
         val_ds = MCRSLDataset(lesion_df, image_index_df, val_subjects, numeric_stats, cfg.image_size, "val",
                                False, use_preprocessing=cfg.use_dermoscopy_preprocessing)
@@ -393,6 +415,10 @@ def main():
     parser.add_argument("--lr", type=float, default=None)
     parser.add_argument("--focal-gamma", type=float, default=None)
     parser.add_argument("--quality-weight-mode", default=None, choices=["none", "trust", "hard_mining"])
+    parser.add_argument("--shuffle-quality-control", action="store_true",
+                         help="shuffled-quality control: permute mean_image_rating across each fold's "
+                              "training lesions (fixed seed=test_fold) before computing w_quality, "
+                              "breaking lesion-to-rating correspondence; val/test stay unshuffled")
     parser.add_argument("--grad-clip-norm", type=float, default=None, help="0/unset = disabled; clip_grad_norm_ max_norm otherwise")
     parser.add_argument("--use-ldam-margin", action="store_true")
     parser.add_argument("--ldam-margin-c", type=float, default=None)
@@ -421,6 +447,8 @@ def main():
         cfg.focal_gamma = args.focal_gamma
     if args.quality_weight_mode is not None:
         cfg.quality_weight_mode = args.quality_weight_mode
+    if args.shuffle_quality_control:
+        cfg.quality_shuffle_control = True
     if args.grad_clip_norm is not None:
         cfg.grad_clip_norm = args.grad_clip_norm
     if args.use_ldam_margin:
