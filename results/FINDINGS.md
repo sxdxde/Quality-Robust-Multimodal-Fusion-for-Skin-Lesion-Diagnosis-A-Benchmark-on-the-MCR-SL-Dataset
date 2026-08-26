@@ -1,10 +1,16 @@
 # MCR-SL Findings (working notes for the INDICON 2026 write-up)
 
-Last updated: 2026-08-26. Core matrix + extended experiments complete; quality-adaptive loss
-reweighting follow-up in progress (see new section below) — `hard_mining` (alone) is the
-current best single result. Three separate attempts to stack something on top of it
-(LDAM+grad-clip, SAM+TTA, SWA) have all made it worse; only `channel_gated_swa` (plain, no
-quality weight) remains queued as the last isolating result before stopping the search.
+Last updated: 2026-08-26. **Search closed.** Core matrix + extended experiments + the
+quality-adaptive loss reweighting follow-up are all complete. `hard_mining` (alone) is the
+final best single result (0.820 balanced accuracy / 0.764 sensitivity / 0.906 AUROC). Three
+separate attempts to stack something on top of it (LDAM+grad-clip, SAM+TTA, SWA) all made it
+worse. The final diagnostic (`channel_gated_swa`, isolating checkpoint-selection noise from
+any loss-function change) shows the remaining balanced-accuracy variance is mostly an
+inherent small-N (~8-9 malignant lesions/fold) sampling floor, not a fixable pipeline
+artifact — so prediction-level checkpoint ensembling (prepared but not run) was skipped as
+unlikely to help for the same reason. Moving to writing with the two-finding framing: `trust`
+(quality-robustness result, narrows the tercile gap) + `hard_mining` (best raw-performance
+result, a general hard-example-mining effect, not a quality-robustness one).
 
 ## Task & protocol
 Binary malignant vs. non-malignant lesion classification, MCR-SL dataset (240 lesions,
@@ -313,17 +319,56 @@ build further improvements on — worth stating plainly, and it mirrors the orig
 matrix's own finding that `channel_gated_combined` (stacking preprocessing+focal+SAM+TTA)
 underperformed every individual ingredient.
 
-**Still queued, result not yet in:** `channel_gated_swa` (plain `channel_gated`, no quality
-reweighting, SWA only) — the actual isolating experiment for the root-cause question above:
-how much of the project's fold-to-fold variance is checkpoint-selection noise alone,
-independent of `hard_mining` or any loss-function change. Given the pattern above, this is
-intended as the last new result before stopping the search and locking in `hard_mining`
-(alone) as the headline follow-up config, regardless of what it shows. Implementation
-verified end-to-end locally before running (toy multi-input model matching this project's
-custom `forward()` signature): `AveragedModel` deep-copies rather than aliases the source
-model, weight averaging accumulates correctly, BN recalibration measurably changes the
-running stats vs. the naive average, and the resulting state_dict loads cleanly into a fresh
-model instance. Script: `scripts/run_swa_experiments.sh`.
+**`channel_gated_swa` (plain, SWA only, isolating checkpoint-selection noise from any
+loss-function change) — the close-out diagnostic.**
+
+| metric | plain | plain + SWA | Δ | std: plain → +SWA |
+|---|---|---|---|---|
+| accuracy | 0.8326 | 0.8286 | −0.0040 | 0.0629 → 0.0477 |
+| **balanced accuracy** | **0.7834** | **0.7616** | **−0.0218** | **0.0762 → 0.0757 (essentially unchanged)** |
+| macro-F1 | 0.7567 | 0.7357 | −0.0210 | 0.0653 → 0.0449 |
+| **sensitivity** | **0.6722** | **0.6028** | **−0.0694** | **0.1423 → 0.1769 (worse)** |
+| specificity | 0.8947 | 0.9204 | +0.0258 | 0.0425 → 0.0478 |
+| AUROC | 0.8814 | 0.9144 | +0.0330 | 0.0579 → 0.0277 (nearly halved) |
+
+**Answer to the root-cause question**: only partial. SWA meaningfully tightens variance on
+AUROC (std nearly halved) and, to a lesser extent, accuracy and macro-F1 — these benefit from
+a smoother, weight-averaged decision surface over the (larger) non-malignant class. But it
+does **not** meaningfully reduce balanced-accuracy variance (0.0762 → 0.0757, essentially flat)
+and actually *increases* sensitivity variance (0.1423 → 0.1769). Balanced accuracy and
+sensitivity are exactly the two metrics dominated by the ~8–9 malignant lesions per fold — a
+sampling floor that weight-averaging cannot smooth away, because it isn't noise in *which*
+epoch's weights get selected, it's irreducible small-N variance in how a handful of malignant
+lesions individually classify. **Checkpoint-selection noise explains part of the picture
+(AUROC/accuracy), but the dominant limit on the metric that matters most for this paper
+(balanced accuracy) is MCR-SL's scale itself, not a fixable training-pipeline artifact.**
+
+A second, independent observation: SWA shifts the model toward specificity at sensitivity's
+cost **on the plain baseline alone**, not just when stacked with `hard_mining` (which showed
+the identical pattern, −0.089 sensitivity / +0.064 specificity). This confirms that
+conservative bias-shift is a general property of weight-averaging in this small/noisy-
+malignant-class regime, not an interaction effect specific to the quality-reweighting
+mechanism.
+
+**Decision on Step 2 (prediction-level checkpoint ensembling)**: given Step 1 already shows
+the balanced-accuracy variance is mostly an inherent small-N floor rather than a
+checkpoint-selection artifact, and prediction-space averaging (Step 2) would very likely hit
+the same floor for the same reason, Step 2 was not run. Code for it
+(`scripts/run_topk_checkpoint_rerun.sh`, `scripts/checkpoint_ensemble_eval.py`) was prepared
+and verified but is being held per the task's own conditional ("only if Step 1 doesn't
+already answer things") rather than run automatically. **Search stopped here per Step 3.**
+Implementation of the SWA experiment itself was verified end-to-end locally before running
+(toy multi-input model matching this project's custom `forward()` signature): `AveragedModel`
+deep-copies rather than aliases the source model, weight averaging accumulates correctly, BN
+recalibration measurably changes the running stats vs. the naive average, and the resulting
+state_dict loads cleanly into a fresh model instance. Script: `scripts/run_swa_experiments.sh`.
+
+Note also: reading this result off the ledger surfaced a real reporting-script bug (not a
+repeat of the earlier ledger corruption) — `channel_gated` is shared by both the plain and
+auxiliary-head configs, distinguished only by the `quality_aware` column; the first version
+of `scripts/report_ledger_rows.py` didn't filter on it and silently merged both configs' rows
+into one misleading 10-row block. Fixed (`--quality-aware` flag added, default `false`); the
+underlying ledger data itself was never at risk.
 
 ### Literature grounding for the novelty claim
 
@@ -413,16 +458,17 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   Keeps the paper's structure clean — core ablation matrix + robustness analysis on the
   designated method as one section, the extended experiments (SAM, TTA, focal, etc.) as a
   separate follow-up results section, not conflated into "the main result."
-- **Decided (pending only the final `channel_gated_swa` isolating result):**
-  `channel_gated_qweight_hard_mining` (alone — 0.820 balanced acc / 0.764 sensitivity /
-  0.906 AUROC) replaces `channel_gated_sam_adamw_tta` as the paper's reported best follow-up
-  config. Every attempt to build on top of it (LDAM+grad-clip, SAM+TTA, SWA — three
-  independent mechanisms) made it worse, so it stands as-is rather than as a base for
+- **Final: `channel_gated_qweight_hard_mining` (alone — 0.820 balanced acc / 0.764
+  sensitivity / 0.906 AUROC) replaces `channel_gated_sam_adamw_tta` as the paper's reported
+  best follow-up config.** Every attempt to build on top of it (LDAM+grad-clip, SAM+TTA, SWA
+  — three independent mechanisms) made it worse, so it stands as-is rather than as a base for
   further stacking.
-- Explicitly ruled a stop point after LDAM+grad-clip, the threshold check, SAM+TTA, and
-  hard_mining+SWA all came back negative or non-improving: no further loss-formula or
-  training-modification variants beyond the one remaining queued result
-  (`channel_gated_swa`, plain, isolating the checkpoint-noise question independent of
-  `hard_mining`) — continuing to search risks the exact p-hacking pattern flagged when this
-  quality-adaptive-loss task was first scoped. `channel_gated_swa` is the last result before
-  writing up the ceiling as it stands.
+- **Search closed** after LDAM+grad-clip, the threshold check, SAM+TTA, hard_mining+SWA, and
+  finally the `channel_gated_swa` isolating diagnostic all came back negative, non-improving,
+  or (for the last one) confirming the remaining variance is an inherent small-N floor rather
+  than a fixable pipeline artifact. Prediction-level checkpoint ensembling (Step 2 of the
+  close-out task) was prepared and verified but deliberately not run, since Step 1 already
+  answered the question it was meant to test. No further loss-formula, optimizer, or
+  training-modification variants beyond this point — continuing would risk the exact
+  p-hacking pattern flagged when this quality-adaptive-loss task was first scoped. Writing up
+  the ceiling as it stands: `trust` for quality-robustness, `hard_mining` for raw performance.
