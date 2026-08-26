@@ -207,28 +207,35 @@ def analysis_5_certainty(oof: pd.DataFrame, lesion_df: pd.DataFrame, derm_df: pd
     # class separates "certainty tracks difficulty" from "low-certainty
     # buckets simply hold more malignant lesions".
     print("\nControlling for class composition (malignant lesions cluster at low certainty,")
-    print("and the model is weaker on them — so the pooled correlation is confounded):")
+    print("and the model is weaker on them — so the pooled correlation is confounded).")
+    print("BOTH axes are controlled the same way: the paper's claim is a COMPARISON")
+    print("between them, so controlling only one would make that comparison invalid.")
     strat_rows = []
-    for label, name in [(0.0, "non-malignant"), (1.0, "malignant")]:
-        sub = df[df["binary_label"] == label]
-        n_sub = len(sub)
-        n_err = int(sub["error"].sum())
-        if n_sub < 3 or sub["error"].nunique() < 2:
-            print(f"  {name:<14} n={n_sub:<4} — too few/degenerate to correlate "
-                  f"({n_err} errors); reported as-is, not computed")
-            strat_rows.append({"stratum": name, "n": n_sub, "n_errors": n_err,
-                               "spearman_vs_error": float("nan"), "p_error": float("nan")})
-            continue
-        r, p = spearmanr(sub["mean_certainty"], sub["error"])
-        print(f"  {name:<14} n={n_sub:<4} errors={n_err:<4} "
-              f"Spearman(certainty, error) = {r:+.3f} (p={p:.3f})")
-        strat_rows.append({"stratum": name, "n": n_sub, "n_errors": n_err,
-                           "spearman_vs_error": r, "p_error": p})
+    for axis_col, axis_name in [("mean_certainty", "certainty"), ("mean_image_rating", "image_rating")]:
+        print(f"\n  {axis_name}:")
+        for label, name in [(0.0, "non-malignant"), (1.0, "malignant")]:
+            sub = df[(df["binary_label"] == label)].dropna(subset=[axis_col])
+            n_sub = len(sub)
+            n_err = int(sub["error"].sum())
+            if n_sub < 3 or sub["error"].nunique() < 2 or sub[axis_col].nunique() < 2:
+                print(f"    {name:<14} n={n_sub:<4} — too few/degenerate to correlate "
+                      f"({n_err} errors); reported as-is, not computed")
+                strat_rows.append({"axis": axis_name, "stratum": name, "n": n_sub,
+                                   "n_errors": n_err, "spearman_vs_error": float("nan"),
+                                   "p_error": float("nan")})
+                continue
+            r, p = spearmanr(sub[axis_col], sub["error"])
+            flag = "significant" if p < 0.05 else "n.s."
+            print(f"    {name:<14} n={n_sub:<4} errors={n_err:<4} "
+                  f"Spearman = {r:+.3f} (p={p:.3f}, {flag})")
+            strat_rows.append({"axis": axis_name, "stratum": name, "n": n_sub,
+                               "n_errors": n_err, "spearman_vs_error": r, "p_error": p})
 
     strat = pd.DataFrame(strat_rows)
     strat.to_csv(results_dir / f"robustness_certainty_by_class_{cfg_tag}.csv", index=False)
-    print("  -> If the relationship holds WITHIN each class, certainty is tracking genuine")
-    print("     diagnostic difficulty. If it vanishes, the pooled result was class mix.")
+    print("\n  -> If a relationship holds WITHIN each class, that axis is tracking something")
+    print("     real. If it vanishes for both, the pooled results were class mix and neither")
+    print("     axis reliably predicts model error at this N — a clean null, reportable as one.")
 
     # Class balance per bucket, so the confound is visible in the table itself.
     summary["pct_malignant"] = (summary["n_malignant"] / summary["n"] * 100).round(1)
