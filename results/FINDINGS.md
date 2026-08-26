@@ -197,6 +197,9 @@ comparators — 40x+ more data and/or an easier task and/or looser evaluation ri
 
 ## Robustness analyses (the actual novelty)
 
+*Six analyses: 1–4 were the original set; 5–6 (diagnostic certainty, intra-subject consistency)
+were added 2026-08-27, post-hoc on existing predictions at zero GPU cost.*
+
 1. **Quality-stratified performance** (channel_gated, N=231 lesions with both a
    prediction and a quality rating): accuracy by tercile — low 0.776, mid 0.914, high
    0.868 (non-monotonic). Spearman(rating, error) = -0.093 (p=0.158) — not significant at
@@ -216,6 +219,65 @@ comparators — 40x+ more data and/or an easier task and/or looser evaluation ri
    architectural capacity imbalance (12-dim learned embedding per categorical field vs. a
    single z-scored scalar per numeric field), not evidence that diameter is clinically
    uninformative — worth a line in the discussion, not a redesign this sprint.
+
+5. **Diagnostic certainty vs. image quality** (`scripts/robustness_analyses_5_6.py`, post-hoc on
+   the existing `channel_gated` out-of-fold predictions, N=231). `dermatology_diagnosis.certainty`
+   is each expert's self-reported confidence in their own diagnosis (0/25/50/75/100) — a
+   different axis from `image_rating` (photo quality). **Verified first, not assumed: E002's
+   certainty is fully intact (241/241 valid, as are E001/E003/E004)**, so the documented E002
+   data loss really was specific to image-quality ratings, exactly as the dataset paper states.
+   Certainty is therefore averaged over all **four** experts, unlike the three-expert quality
+   rating.
+
+   | certainty tercile | n | n malignant | % malignant | accuracy | sensitivity |
+   |---|---|---|---|---|---|
+   | low | 93 | 23 | 24.7% | 0.796 | 0.609 |
+   | mid | 65 | 13 | 20.0% | 0.892 | 0.692 |
+   | high | 73 | 6 | 8.2% | 0.890 | 0.833 |
+
+   Pooled, certainty looks like a much better predictor of model error than photo quality:
+   Spearman(certainty, error) = **−0.175 (p=0.008)** vs. Spearman(rating, error) = −0.093
+   (p=0.158); same ordering on confidence (+0.214, p=0.001 vs. +0.125, p=0.058). The two axes
+   are strongly but not identically related (Spearman(certainty, rating) = +0.704).
+
+   **But the pooled result is confounded, and the confound largely explains it.** Malignant
+   lesions concentrate at low certainty (24.7% → 8.2% across terciles — experts are less sure
+   about the harder, more suspicious lesions), and this model is far weaker on malignant lesions
+   generally (sensitivity 0.672 vs. specificity 0.895). Controlling for class, the relationship
+   attenuates to non-significance in both strata: non-malignant ρ=−0.127 (p=0.083, n=189),
+   malignant ρ=−0.093 (p=0.559, n=42). The direction is consistent in both, so a weak real
+   effect is plausible, but **it is not established at this N and must not be written up as
+   "model errors track diagnostic difficulty"** — the honest statement is that the apparent
+   effect is substantially class composition, with at most a weak residual trend. Both axes are
+   controlled identically (see `robustness_certainty_by_class_*.csv`), since the claim here is a
+   comparison and controlling only one side would invalidate it.
+
+   Worth reporting regardless: the within-malignant sensitivity trend (0.609 → 0.692 → 0.833) is
+   monotonic and *not* subject to the class-mix confound, since it is computed within malignant
+   lesions only — though n=6 in the top tercile makes it far too noisy to lean on.
+
+6. **Intra-subject consistency** (same script, same predictions). MCR-SL deliberately collected
+   ≥2 lesions per subject; unused until now. Scope check first, per the small-N discipline used
+   for the histopathology subset: **55 of 59 subjects have ≥2 usable lesions** (227 lesions;
+   mean 4.13 per subject, max 11) — comfortably above the qualitative-only threshold.
+
+   | outcome | subjects | % |
+   |---|---|---|
+   | all lesions correct | 27 | 49.1% |
+   | mixed | 28 | 50.9% |
+   | **all lesions incorrect** | **0** | **0.0%** |
+
+   **No subject-level error clustering — a clean null.** Against a permutation null that
+   reshuffles lesion correctness across lesions with subject sizes held fixed (10,000
+   permutations), observed perfectly-consistent subjects = 27 vs. null mean 29.88, empirical
+   p=0.954. Observed consistency is if anything *below* chance, so errors scatter independently
+   across lesions rather than concentrating in a few "hard subjects." Zero subjects fail on all
+   their lesions.
+
+   This is a genuinely useful negative for the methods section: it is evidence that the
+   per-subject metadata the model consumes (skin type, sun reaction, history) is **not** inducing
+   subject-level systematic bias, and that subject-disjoint splitting is not masking a
+   per-patient confound. Report with N=55 stated alongside the p-value, never the p-value alone.
 
 ## Quality-adaptive loss reweighting (follow-up to robustness analysis #2)
 
