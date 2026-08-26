@@ -9,6 +9,7 @@ Usage:
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -16,6 +17,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("run_tags", nargs="+", help="one or more run_tag values (the ledger's 'variant' column) to report")
     parser.add_argument("--ledger", type=Path, default=Path("results/results_ledger.csv"))
+    parser.add_argument("--quality-aware", choices=["true", "false", "both"], default="false",
+                         help="some run_tags (e.g. 'channel_gated') are shared by two configs, distinguished only "
+                              "by this column -- default 'false' matches the non-auxiliary-head config in every "
+                              "such case; pass 'both' to see both without filtering (will double-count as one block)")
     args = parser.parse_args()
 
     df = pd.read_csv(args.ledger)
@@ -23,15 +28,20 @@ def main():
 
     for tag in args.run_tags:
         sub = df[df["variant"] == tag]
+        if args.quality_aware != "both":
+            sub = sub[sub["quality_aware"] == (args.quality_aware == "true")]
         if sub.empty:
-            print(f"\n=== {tag}: NOT FOUND in ledger ===")
+            print(f"\n=== {tag} (quality_aware={args.quality_aware}): NOT FOUND in ledger ===")
             continue
-        print(f"\n=== {tag} (n_folds={len(sub)}) ===")
+        print(f"\n=== {tag} (quality_aware={args.quality_aware}, n_folds={len(sub)}) ===")
         if len(sub) != 5:
-            print(f"  WARNING: expected 5 fold rows, found {len(sub)} -- check for duplicate/missing entries before trusting this")
+            print(f"  WARNING: expected 5 fold rows, found {len(sub)} -- check for duplicate/missing entries "
+                  f"(or a shared run_tag needing --quality-aware to disambiguate) before trusting this")
         print(sub[["fold"] + metric_cols].to_string(index=False))
         for col in metric_cols:
-            print(f"  {col}: {sub[col].mean():.4f} +/- {sub[col].std():.4f}")
+            # ddof=0 (population std), matching train.py's own aggregate_fold_metrics -- pandas' .std()
+            # default (ddof=1) would be ~11.8% larger at N=5 and inconsistent with every other reported std.
+            print(f"  {col}: {sub[col].mean():.4f} +/- {np.std(sub[col].to_numpy(), ddof=0):.4f}")
 
 
 if __name__ == "__main__":
