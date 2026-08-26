@@ -240,21 +240,45 @@ were added 2026-08-27, post-hoc on existing predictions at zero GPU cost.*
    (p=0.158); same ordering on confidence (+0.214, p=0.001 vs. +0.125, p=0.058). The two axes
    are strongly but not identically related (Spearman(certainty, rating) = +0.704).
 
-   **But the pooled result is confounded, and the confound largely explains it.** Malignant
-   lesions concentrate at low certainty (24.7% → 8.2% across terciles — experts are less sure
-   about the harder, more suspicious lesions), and this model is far weaker on malignant lesions
-   generally (sensitivity 0.672 vs. specificity 0.895). Controlling for class, the relationship
-   attenuates to non-significance in both strata: non-malignant ρ=−0.127 (p=0.083, n=189),
-   malignant ρ=−0.093 (p=0.559, n=42). The direction is consistent in both, so a weak real
-   effect is plausible, but **it is not established at this N and must not be written up as
-   "model errors track diagnostic difficulty"** — the honest statement is that the apparent
-   effect is substantially class composition, with at most a weak residual trend. Both axes are
-   controlled identically (see `robustness_certainty_by_class_*.csv`), since the claim here is a
-   comparison and controlling only one side would invalidate it.
+   **The pooled result is confounded, and controlling for it dissolves the finding entirely.**
+   Malignant lesions concentrate at low certainty (24.7% → 20.0% → 8.2% across terciles —
+   experts are less sure about the harder, more suspicious lesions), and this model is far
+   weaker on malignant lesions generally (sensitivity 0.672 vs. specificity 0.895). So a
+   low-certainty bucket scores worse largely *because* it holds three times the malignant
+   fraction. Both axes were therefore stratified by class identically — the claim here is a
+   *comparison*, so controlling one side and not the other would have invalidated it:
 
-   Worth reporting regardless: the within-malignant sensitivity trend (0.609 → 0.692 → 0.833) is
-   monotonic and *not* subject to the class-mix confound, since it is computed within malignant
-   lesions only — though n=6 in the top tercile makes it far too noisy to lean on.
+   | axis | non-malignant (n=189, 20 errors) | malignant (n=42, 14 errors) |
+   |---|---|---|
+   | certainty | ρ=−0.127 (p=0.083, n.s.) | ρ=−0.093 (p=0.559, n.s.) |
+   | image rating | ρ=−0.120 (p=0.101, n.s.) | ρ=+0.166 (p=0.295, n.s.) |
+
+   **Nothing survives.** No stratum reaches significance for either axis, and — the decisive
+   point — on non-malignant lesions (the only stratum with meaningful power) the two axes are
+   effectively *indistinguishable*: −0.127 vs. −0.120, p=0.083 vs. p=0.101. The large pooled
+   gap (p=0.008 vs. p=0.158) was an artifact of certainty being more strongly associated with
+   malignancy than image quality is, so pooling inflated certainty's correlation more.
+
+   **Report as a null, and say why the naive version was wrong.** The defensible statement is
+   *"neither expert diagnostic certainty nor image quality reliably predicts model error at this
+   N once class composition is accounted for."* It must **not** be written as "model errors
+   track diagnostic difficulty rather than photo quality" — that conclusion is available only
+   from the uncontrolled pooled numbers and does not survive a class control. This also
+   reinforces rather than contradicts analysis 1's original "no strong quality-performance
+   relationship detected": certainty does not rescue that null, it reproduces it. The residual
+   non-malignant trends (p≈0.08–0.10, same magnitude for both axes) are suggestive of a weak
+   shared effect at most — worth one sentence of discussion, not a claim.
+
+   Methodologically this is the most useful part of analysis 5: a pooled correlation on this
+   dataset produces a clean-looking p=0.008 that is substantially class-mix artifact. Worth a
+   line in the paper as a caution for anyone else stratifying MCR-SL by an expert-annotation
+   axis, since malignancy correlates with most of them.
+
+   One piece is not subject to the class-mix confound: the within-malignant sensitivity trend
+   (0.609 → 0.692 → 0.833) is monotonic and computed within malignant lesions only. But it rests
+   on 23/13/**6** malignant lesions per tercile, and the corresponding within-malignant
+   correlation is flatly non-significant (ρ=−0.093, p=0.559) — so it is a suggestive shape, not
+   evidence. Do not report it without the per-tercile malignant counts next to it.
 
 6. **Intra-subject consistency** (same script, same predictions). MCR-SL deliberately collected
    ≥2 lesions per subject; unused until now. Scope check first, per the small-N discipline used
