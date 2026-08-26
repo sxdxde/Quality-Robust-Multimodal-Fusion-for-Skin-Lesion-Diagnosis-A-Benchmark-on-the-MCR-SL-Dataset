@@ -1,6 +1,7 @@
 # MCR-SL Findings (working notes for the INDICON 2026 write-up)
 
-Last updated: 2026-08-26. **Search closed.** Core matrix + extended experiments + the
+Last updated: 2026-08-27. **Search closed; training complete — everything from here is
+writing.** Core matrix + extended experiments + the
 quality-adaptive loss reweighting follow-up are all complete. `hard_mining` (alone) is the
 final best single result (0.820 balanced accuracy / 0.764 sensitivity / 0.906 AUROC). Three
 separate attempts to stack something on top of it (LDAM+grad-clip, SAM+TTA, SWA) all made it
@@ -17,6 +18,18 @@ than genuine quality-awareness. Final framing: `hard_mining` is the paper's one 
 quality-adaptive-loss contribution; `trust` is reported as a negative/null result after the
 control, alongside the auxiliary-quality-head failure.
 
+**Final experiment (2026-08-27) — and the headline numbers the paper should report.** A proposed
+"all-images-per-lesion" task turned out to rest on a false premise: training has been
+image-level (~5.65x more image samples than lesions) since the very first run. Verifying that,
+along with the fold-safety property, **retroactively validates every result in this document**
+(no lesion's images ever span two folds). The one genuinely free item that task did surface —
+eval-time TTA/multi-image averaging on the validated `hard_mining` checkpoints, never previously
+run — yields the project's **best configuration: `hard_mining` + TTA + multi-image, 0.875
+accuracy / 0.840 balanced accuracy / 0.783 sensitivity / 0.918 AUROC**, with no retraining. The
+same verification also quantified a real, systematic ~16% `pos_weight` miscalibration, which is
+documented as a methodological caveat rather than fixed on the last day (reasoning in
+"Image-level training verification" below).
+
 ## Task & protocol
 Binary malignant vs. non-malignant lesion classification, MCR-SL dataset (240 lesions,
 60 subjects, first benchmark on this dataset). Subject-disjoint stratified 5-fold CV;
@@ -28,9 +41,19 @@ test fold) — no test-fold peeking, no hyperparameter tuning against final numb
 
 ## Architecture (block-by-block, matches Fig. 1 in the paper and models/*.py)
 
-- **Input**: one dermoscopic image (3×224×224, ImageNet-normalized) + patient metadata
-  (16 categorical + 4 numeric fields, after dropping the constant-valued and unusably
-  sparse free-text fields — see `data/schema.py`'s "explicitly dropped fields" note).
+- **Input** (per forward pass): one dermoscopic image (3×224×224, ImageNet-normalized) +
+  patient metadata (16 categorical + 4 numeric fields, after dropping the constant-valued
+  and unusably sparse free-text fields — see `data/schema.py`'s "explicitly dropped fields"
+  note).
+  **Training is image-level, not lesion-level** — `config.py:train_on_all_dermoscopic_images`
+  defaults to `True`, so *every* dermoscopic image of a training lesion is a separate
+  training sample (~5.65x more samples than lesions; verified, see "Image-level training"
+  below). Only val/test use exactly one image per lesion (the `diagnosis_image_id` image),
+  so evaluation reports one prediction per lesion per the eval protocol. The metadata vector
+  and quality weight are per-lesion values broadcast across all of that lesion's images.
+  *(This bullet previously read just "Input: one dermoscopic image", which describes the
+  per-sample tensor and was misread as one image per lesion — clarified after that
+  misreading sent a whole task after an already-implemented "fix".)*
 
 - **Image encoder** (`models/image_encoder.py: EfficientNetB0Encoder`) — ImageNet-pretrained
   EfficientNet-B0 (`timm`), fully trainable end to end (no frozen layers, unlike some
@@ -479,6 +502,103 @@ mechanism. **Per the task scope, this closes out the quality-adaptive-loss searc
 `channel_gated_swa` and the (skipped) prediction-ensembling check — no further controls or
 variants.**
 
+## Image-level training verification + eval-time variants on `hard_mining` (final experiment)
+
+Prompted by a proposed "all-images-per-lesion" task premised on the belief that every config
+trains on a single image per lesion. **That premise was false** — training has been image-level
+since the first run. Verified rather than assumed, via
+`scripts/verify_image_level_training.py` (run on the real data, remote):
+
+**Check 1 — fold safety (the property that would silently invalidate everything):** all 240
+lesions have every one of their images in exactly one fold; 0 lesions span >1 fold, 0 image
+rows unassigned. Subject-disjoint folds already guarantee lesion-disjoint images. **This
+retroactively validates every result in this document** — there has never been image-level
+leakage across folds.
+
+**Check 2 — image census:** 2131 usable images = 1352 dermoscopy + 779 clinical. Dermoscopy per
+lesion: mean 5.73, median 6, range 1–18; 4 lesions have zero dermoscopy images (these fall back
+to their `diagnosis_image_id` image).
+
+**Check 3 — what the train split actually enumerates:** averaged over folds, **813 image samples
+from 144 lesions (5.65x)**. Per fold: 1042/190, 882/163, 677/122, 621/102, 843/143. Training has
+always used ~1352 dermoscopic images, not 240. The only genuinely unused data is the 779
+**clinical** images (a different visual domain; deliberately out of scope).
+
+Note also that this lever could not have fixed the diagnosed root cause even if it had been
+available: the documented bottleneck is ~8–9 malignant **lesions** per fold, and additional
+photographs of those same lesions are near-duplicates that add no new independent malignant
+cases. More images per lesion ≠ more independent minority-class examples.
+
+### Check 4 — a real, quantified, systematic miscalibration (documented, not fixed)
+
+`train.py:compute_binary_pos_weight` derives the binary class weight from `lesion_df` (one row
+per lesion) while the loader yields image-level samples. Measured per fold:
+
+| fold | pos_weight (lesion-level, as applied) | pos_weight (image-level, as actually seen) | rel. diff |
+|---|---|---|---|
+| 0 | 6.667 | 6.496 | −2.6% |
+| 1 | 5.400 | 3.960 | −26.7% |
+| 2 | 3.654 | 2.761 | −24.4% |
+| 3 | 2.808 | 2.324 | −17.2% |
+| 4 | 4.520 | 4.113 | −9.0% |
+
+Mean |relative difference| **16.0%**, and — importantly — **negative in all five folds**. The
+direction is systematic, not noise: malignant lesions carry *more* images each than
+non-malignant ones, so the true image-level class imbalance is milder than the lesion-level
+ratio being applied. Every model in this project has therefore been trained with a pos_weight
+biased ~16% high, i.e. told malignant is rarer than the batches it actually sees.
+
+**Deliberately not "fixed" before the deadline**, for two defensible reasons worth stating in
+the paper's methods rather than quietly correcting: (1) the bias runs *toward* sensitivity, the
+metric this task weights most heavily, so the "correction" would most likely lower the number
+that matters clinically; (2) every existing ledger row was trained under the lesion-level
+weight, so changing it now would break cross-row comparability for the entire results table on
+the last day. Recorded as a known, quantified methodological caveat and a concrete future-work
+item, not as a silent flaw.
+
+### Eval-time variants on the validated `hard_mining` checkpoints (no retraining)
+
+The one genuinely untested, free item the task surfaced: every prior eval-time-trick run was on
+the plain baseline or SAM, never on `hard_mining`. Pure inference on existing checkpoints
+(`scripts/reeval_eval_time_options.py --base-run-tag channel_gated_qweight_hard_mining`).
+
+| run | accuracy | balanced_acc | macro_F1 | sensitivity | specificity | AUROC |
+|---|---|---|---|---|---|---|
+| hard_mining (base) | 0.845 | 0.820 | 0.778 | 0.764 | 0.875 | 0.906 |
+| + TTA | 0.849 | 0.833 | 0.783 | **0.808** | 0.858 | 0.911 |
+| + multi-image | 0.871 | 0.838 | 0.805 | 0.783 | 0.892 | **0.920** |
+| **+ TTA + multi-image** | **0.875** | **0.840** | **0.810** | 0.783 | 0.896 | 0.918 |
+
+**Multi-image test-time averaging stacks cleanly on `hard_mining` — unlike on SAM+TTA.** This is
+the interesting part. The extended-experiments section above documents that adding multi-image
+averaging to `channel_gated_sam_adamw_tta` *reduced* balanced accuracy (0.822 → 0.810). Here the
+same trick *adds* (+0.018 over base, and +0.020 with TTA on top). So "eval-time tricks aren't
+strictly additive" remains true, but the failure was specific to the SAM combination, not a
+general property of multi-image averaging — a more precise version of the earlier claim.
+
+TTA-only gives the family's **highest sensitivity (0.808, +0.044 over base)** at some
+specificity cost — the one variant to pick if sensitivity is the priority, which for
+cancer screening is arguable.
+
+**On the DiffMIC comparison — resist the temptation.** The best config's 0.840 balanced accuracy
+sits nominally above the verified binary comparator (Uliana & Krohling 2025, DiffMIC, 0.836).
+**This is not a "we beat SOTA" result and must not be written as one**: fold-to-fold std is
+0.095, so the two are statistically indistinguishable; it's a different dataset (2298 images vs.
+our 234 lesions), so it was never a like-for-like benchmark; and the gain came from eval-time
+averaging on an existing model, not a better method. The honest framing stays exactly as the
+"Are these scores good?" section already puts it — first benchmark on MCR-SL, with a
+robustness analysis, in a believable range for the task and scale.
+
+**Ledger integrity note**: `report_ledger_rows.py`'s built-in guard caught a duplicated fold-0
+row for `channel_gated_qweight_hard_mining_tta` (6 rows, not 5), which skewed that run's
+reported balanced accuracy to 0.8215. The correct 5-fold value is **0.8330**, confirmed against
+`reeval_eval_time_options.py`'s own in-run aggregate (computed from the 5 folds it had just
+evaluated, independent of the ledger). Consistent with the previously documented
+interrupted-then-restarted-run pattern; the table above uses the corrected figures.
+`scripts/dedupe_ledger.py` cleans it — dry-run by default, keys on (variant, quality_aware,
+fold) so it cannot repeat the earlier incident where a dedup missing `quality_aware` deleted the
+plain baseline's rows, and refuses to touch any duplicate group whose metrics actually differ.
+
 ## Are these scores good?
 
 For a **first benchmark on a brand-new, 240-lesion dataset**, yes — this is a respectable,
@@ -550,3 +670,15 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   sensitivity / 0.906 AUROC) is the paper's one validated quality-adaptive-loss result, for
   raw performance; `trust` is reported as a negative/null quality-robustness result, alongside
   the auxiliary-quality-head failure — not as a second success.**
+- **All-images-per-lesion training: not applicable — already implemented.** Verified
+  2026-08-27: `train_on_all_dermoscopic_images` has defaulted to `True` since the first run
+  (~5.65x image samples per lesion). No data-utilization gap existed. See "Image-level training
+  verification" above. Best config after that session's free eval-time variants:
+  **`hard_mining` + TTA + multi-image, 0.840 balanced accuracy / 0.918 AUROC.**
+- **Clinical images (779) remain the only genuinely untapped data** — a different visual domain
+  from dermoscopy, so using them would need an explicit modality indicator to avoid confusing
+  the encoder. Deliberately out of scope this sprint; the single most concrete future-work item.
+- **Image-level `pos_weight` correction** — a real, quantified ~16% systematic miscalibration
+  (see Check 4 above), left in place to preserve cross-row comparability on the final day and
+  because the bias runs toward sensitivity. Second concrete future-work item; the paper should
+  disclose it rather than let a reader discover it.
