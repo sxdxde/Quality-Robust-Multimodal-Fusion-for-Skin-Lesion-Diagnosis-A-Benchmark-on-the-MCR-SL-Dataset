@@ -1,5 +1,34 @@
 # MCR-SL Findings (working notes for the INDICON 2026 write-up)
 
+> **Contents**
+> **Start here for writing:** [Abstract-ready numbers](#abstract-ready-numbers-copy-these-with-their-stds) ·
+> [Master results table](#master-results-table--every-run-one-place) ·
+> [Paper-section mapping](#suggested-paper-section-mapping) ·
+> [Consolidated limitations](#consolidated-limitations-draft-the-limitations-section-straight-from-this) ·
+> [Reproducibility spec](#reproducibility-specification-for-the-papers-implementation-details-paragraph) ·
+> [Artifact inventory](#artifact-inventory--which-file-backs-which-claim) ·
+> [Chronology](#chronology--what-was-tried-in-order-and-why)
+>
+> **Setup:** [Task & protocol](#task--protocol) · [Dataset composition](#dataset-composition-verified-against-the-real-files-not-the-dataset-papers-prose) ·
+> [Fold composition](#fold-composition-seed-42-make_subject_disjoint_folds) ·
+> [Statistical conventions](#statistical-conventions-used-throughout-this-document) ·
+> [Architecture](#architecture-block-by-block-matches-fig-1-in-the-paper-and-modelspy)
+>
+> **Results:** [Core ablation matrix](#core-ablation-matrix-claudemds-required-matrix) ·
+> [Extended experiments](#extended-experiments-post-baseline-each-its-own-tracked-run_tag) ·
+> [Quality-adaptive loss](#quality-adaptive-loss-reweighting-follow-up-to-robustness-analysis-2) ·
+> [Shuffled-quality control](#shuffled-quality-control-validity-check--closes-out-the-quality-adaptive-loss-search) ·
+> [Image-level verification + best config](#image-level-training-verification--eval-time-variants-on-hard_mining-final-experiment) ·
+> [Robustness analyses 1–6](#robustness-analyses-the-actual-novelty) ·
+> [Are these scores good?](#are-these-scores-good)
+
+**One-line summary.** First benchmark on MCR-SL. Best configuration: channel-gated
+metadata fusion + quality-adaptive `hard_mining` loss reweighting + TTA + multi-image averaging,
+**0.840 ± 0.095 balanced accuracy / 0.918 ± 0.058 AUROC**. The quality-adaptive loss is
+validated against an information-matched shuffled control (its gain collapses to baseline when
+the ratings are shuffled). Six robustness analyses; three initially-positive findings were
+reversed by follow-up controls, which is itself the paper's most transferable lesson.
+
 Last updated: 2026-08-27. **Search closed; training complete — everything from here is
 writing.** Core matrix + extended experiments + the
 quality-adaptive loss reweighting follow-up are all complete. `hard_mining` (alone) is the
@@ -37,7 +66,66 @@ per fold, a second held-out fold is used for checkpoint selection (never the rep
 test fold) — no test-fold peeking, no hyperparameter tuning against final numbers.
 
 6 lesions have `malignancy=="unknown"` and are excluded from the binary task (234 usable).
-5 lesions have `unified_diagnosis=="UNK"` and are excluded from the 9-class aux task.
+**6** lesions are excluded from the 9-class aux task (`unified_diagnosis=="UNK"` or missing).
+*(An earlier version of this line said 5 — corrected 2026-08-27 against every run's own
+`build_lesion_table` output, which prints "aux 9-class task: 6 excluded".)*
+
+### Dataset composition (verified against the real files, not the dataset paper's prose)
+
+| quantity | value | source |
+|---|---|---|
+| lesions | 240 | `lesion.xlsx` |
+| subjects | 60 (59 with ≥1 binary-usable lesion) | `subject.xlsx` |
+| binary labels | 42 Malignant / 192 Non-malignant / 6 unknown | `lesion.malignancy` |
+| binary-usable lesions | **234** | 240 − 6 unknown |
+| image rows (raw) | 2394 | `image.xlsx` |
+| image rows after lesion join + file check | **2131** (0 missing files) | `build_image_index` |
+| — dermoscopy | 1352 | `image.modality` |
+| — clinical | 779 (unused — see future work) | `image.modality` |
+| dermoscopy images per lesion | mean 5.73, median 6, range 1–18 | Check 2 below |
+| lesions with zero dermoscopy images | 4 (fall back to `diagnosis_image_id`) | Check 2 below |
+| histopathology-confirmed | **28** (not 29 as CLAUDE.md's prose estimated) | `histopathology_diagnosis.xlsx` |
+| lesions with a mean quality rating | 238/240 (L0013, L0205 have none) | 3 experts, E001/E003/E004 |
+| lesions with a mean certainty | 238/240 | **4** experts — E002's certainty is intact |
+| 9-class small-N classes | MEL 8, SCC **4**, ANG 4, DF 2 | `data/schema.py` (verified counts) |
+
+Note `SCC=4`, not 5 as CLAUDE.md's prose said — `data/schema.py`'s counts were verified
+against the file. Every table using 9-class metrics must flag these four classes.
+
+### Fold composition (seed 42, `make_subject_disjoint_folds`)
+
+Folds are balanced greedily on **malignant-lesion count per subject**, so malignant counts come
+out even but *subject* counts do not:
+
+| fold | subjects | malignant lesions | train lesions (when this is the test fold) | train image samples |
+|---|---|---|---|---|
+| 0 | 5 | 9 | 190 | 1042 |
+| 1 | 6 | 9 | 163 | 882 |
+| 2 | 16 | 8 | 122 | 677 |
+| 3 | 16 | 8 | 102 | 621 |
+| 4 | 16 | 8 | 143 | 843 |
+
+**The subject imbalance is severe and worth disclosing** — folds 0 and 1 hold 5 and 6 subjects
+while folds 2–4 hold 16 each. This is a direct consequence of balancing on malignant-lesion
+count with subjects carrying between 1 and 11 lesions each: a few subjects contribute many
+malignant lesions, so a fold can hit its malignant quota with very few subjects. It also
+explains part of the fold-to-fold variance documented throughout: fold 0's test set is only 5
+subjects' worth of lesions. Train-set sizes vary correspondingly (102–190 lesions, 621–1042
+image samples). Each lesion appears in exactly 3 of the 5 training sets (720 = 240 × 3 ✓).
+
+### Statistical conventions used throughout this document
+- **All mean ± std across folds use population std (`ddof=0`)**, matching
+  `evaluate.py:aggregate_fold_metrics`. Pandas' `.std()` default (`ddof=1`) would be ~11.8%
+  larger at N=5 and inconsistent with every other number here — `scripts/report_ledger_rows.py`
+  explicitly forces `ddof=0` for this reason.
+- **AUROC** uses `sklearn.roc_auc_score` on the malignant-class probability; a fold with a
+  single class present yields NaN and is skipped via `nanmean` (never triggered in practice).
+- **Spearman correlations** use `scipy.stats.spearmanr`, two-sided, no multiple-comparison
+  correction — with six robustness analyses reporting several p-values each, treat any single
+  p just below 0.05 with corresponding caution.
+- **Permutation tests** (analysis 6) use 10,000 permutations, `RandomState(42)`, and report the
+  empirical one-sided p as `mean(null >= observed)`.
+- **Terciles** use `pd.qcut(..., 3)` (equal-frequency, not equal-width), so bucket Ns differ.
 
 ## Architecture (block-by-block, matches Fig. 1 in the paper and models/*.py)
 
@@ -102,6 +190,75 @@ test fold) — no test-fold peeking, no hyperparameter tuning against final numb
   embedding *before* the heads, not a forward-pass block): supervised contrastive loss
   (`models/heads.py: supervised_contrastive_loss`, SupCon-style), used only in the
   `channel_gated_contrastive` follow-up experiment; a negative result there (see below).
+
+## Master results table — every run, one place
+
+All 5-fold means. Sorted by balanced accuracy. `quality_aware` is `False` everywhere except the
+one row that names it. Rebuild from the ledger with
+`python scripts/report_ledger_rows.py <run_tag>`.
+
+| # | run_tag | acc | **bal_acc** | macro_F1 | sens | spec | AUROC | retrain? | group |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | `hard_mining_tta_multiimage` | **0.875** | **0.840** | **0.810** | 0.783 | 0.896 | 0.918 | no | qweight+eval |
+| 2 | `hard_mining_multiimage` | 0.871 | 0.838 | 0.805 | 0.783 | 0.892 | **0.920** | no | qweight+eval |
+| 3 | `hard_mining_tta` | 0.849 | 0.833 | 0.783 | **0.808** | 0.858 | 0.911 | no | qweight+eval |
+| 4 | `channel_gated_sam_adamw_tta` | 0.861 | 0.822 | 0.789 | 0.719 | 0.925 | 0.908 | yes+eval | extended |
+| 5 | **`channel_gated_qweight_hard_mining`** | 0.845 | **0.820** | 0.778 | 0.764 | 0.875 | 0.906 | yes | **qweight (headline)** |
+| 6 | `channel_gated_tta_multiimage` | 0.857 | 0.815 | 0.787 | 0.719 | 0.910 | 0.908 | no | extended |
+| 7 | `channel_gated_multiimage` | 0.854 | 0.813 | 0.784 | 0.719 | 0.907 | 0.906 | no | extended |
+| 8 | `channel_gated_sam_adamw` | 0.859 | 0.811 | 0.785 | 0.694 | 0.927 | 0.904 | yes | extended |
+| 9 | `channel_gated_sam_adamw_tta_multiimage` | 0.856 | 0.810 | 0.780 | 0.694 | 0.925 | **0.915** | yes+eval | extended |
+| 10 | `channel_gated_focal` (γ=2) | 0.858 | 0.809 | 0.779 | 0.694 | 0.923 | 0.877 | yes | extended |
+| 11 | `channel_gated_hardmining_swa` | — | 0.807 | — | 0.675 | 0.939 | 0.856 | yes | stacked on hm |
+| 12 | `channel_gated_sam_adamw_multiimage` | 0.851 | 0.800 | 0.773 | 0.672 | **0.928** | 0.917 | yes+eval | extended |
+| 13 | `channel_gated_hardmining_ldam_stable` | — | 0.798 | — | 0.697 | 0.899 | — | yes | stacked on hm |
+| 14 | `channel_gated_preprocessed` | 0.828 | 0.793 | 0.753 | 0.736 | 0.851 | 0.875 | yes | extended |
+| 15 | `channel_gated_hardmining_sam_tta` | — | 0.789 | — | 0.761 | 0.816 | 0.886 | yes+eval | stacked on hm |
+| 16 | `channel_gated_qweight_trust` | 0.793 | 0.788 | 0.721 | 0.725 | 0.850 | 0.869 | yes | qweight |
+| 17 | `channel_gated_tta` | 0.841 | 0.788 | 0.765 | 0.672 | 0.904 | 0.897 | no | extended |
+| 18 | `image_only` | 0.813 | 0.784 | 0.733 | 0.697 | 0.872 | 0.895 | yes | **core matrix** |
+| 19 | **`channel_gated`** (plain) | 0.833 | 0.783 | 0.757 | 0.672 | 0.895 | 0.881 | yes | **core matrix** |
+| 20 | `hardmining_shuffled` (control) | — | 0.775 | — | 0.667 | — | — | yes | control |
+| 21 | `channel_gated_contrastive` | 0.812 | 0.771 | 0.734 | 0.669 | 0.872 | 0.873 | yes | extended |
+| 22 | `late_fusion` | 0.831 | 0.768 | 0.743 | 0.644 | 0.891 | 0.851 | yes | **core matrix** |
+| 23 | `trust_shuffled` (control) | — | 0.763 | — | 0.672 | — | — | yes | control |
+| 24 | `channel_gated_swa` | 0.829 | 0.762 | 0.736 | 0.603 | 0.920 | 0.914 | yes | diagnostic |
+| 25 | `channel_gated_combined` | 0.818 | 0.759 | 0.715 | 0.622 | 0.895 | 0.893 | yes+eval | extended |
+| 26 | `channel_gated_optimizerv2` | 0.822 | 0.757 | 0.731 | 0.661 | 0.853 | 0.845 | yes | extended |
+| 27 | `channel_gated` + quality-aware head | 0.812 | 0.740 | 0.715 | 0.578 | 0.902 | 0.879 | yes | **core matrix** |
+
+Dashes are metrics not recorded in the notes for that run — read them off
+`results/results_ledger.csv` if a table needs them. Rows 1–3 and 5 are the paper's headline
+family; rows 18/19/22/27 are CLAUDE.md's required core matrix.
+
+### Per-fold detail — the `hard_mining` family (the paper's headline numbers)
+
+Reported in full because these are the rows the paper leads with, and because the fold-to-fold
+spread is the single most important caveat attached to them.
+
+**`channel_gated_qweight_hard_mining` (base):**
+
+| fold | acc | bal_acc | macro_F1 | sens | spec | AUROC |
+|---|---|---|---|---|---|---|
+| 0 | 0.7200 | 0.7083 | 0.7029 | 0.6667 | 0.7500 | 0.8403 |
+| 1 | 0.9200 | 0.8889 | 0.9081 | 0.7778 | 1.0000 | 0.9722 |
+| 2 | 0.8980 | 0.7881 | 0.8032 | 0.6250 | 0.9512 | 0.9024 |
+| 3 | 0.8710 | 0.9259 | 0.7933 | 1.0000 | 0.8519 | 0.9722 |
+| 4 | 0.8143 | 0.7863 | 0.6835 | 0.7500 | 0.8226 | 0.8427 |
+| **mean ± std** | 0.8446 ± 0.0717 | **0.8195 ± 0.0782** | 0.7782 ± 0.0805 | 0.7639 ± 0.1303 | 0.8751 ± 0.0898 | 0.9060 ± 0.0585 |
+
+**`+ TTA`** (mean ± std): acc 0.8486 ± 0.0556 · **bal_acc 0.8330 ± 0.0711** · macro_F1 0.7832 ± 0.0750 · sens **0.8083 ± 0.1274** · spec 0.8578 ± 0.0693 · AUROC 0.9105 ± 0.0630
+
+**`+ multi-image`** (mean ± std): acc 0.8713 ± 0.0728 · **bal_acc 0.8378 ± 0.0929** · macro_F1 0.8051 ± 0.0935 · sens 0.7833 ± 0.1670 · spec 0.8923 ± 0.0934 · AUROC **0.9197 ± 0.0541**
+
+**`+ TTA + multi-image`** (mean ± std): acc **0.8745 ± 0.0752** · **bal_acc 0.8396 ± 0.0952** · macro_F1 **0.8099 ± 0.0966** · sens 0.7833 ± 0.1670 · spec 0.8959 ± 0.0944 · AUROC 0.9182 ± 0.0580
+
+**Read the standard deviations before quoting any mean.** Balanced accuracy on the best config
+is 0.840 ± **0.095**; per-fold it ranges 0.738 → 0.964. Sensitivity is worse: ± 0.167, with
+fold 2 at 0.500 and fold 3 at 1.000. With 8–9 malignant lesions per test fold, a single lesion
+flipping moves fold sensitivity by ~0.11–0.125. **Every headline number in this paper should
+carry its std, and no two configs within ~0.05 balanced accuracy of each other should be
+described as one beating the other.**
 
 ## Core ablation matrix (CLAUDE.md's required matrix)
 
@@ -689,19 +846,175 @@ plain baseline's rows, and refuses to touch any duplicate group whose metrics ac
 
 For a **first benchmark on a brand-new, 240-lesion dataset**, yes — this is a respectable,
 defensible result, not a suspiciously perfect one (which would suggest leakage) and not a
-weak one either. AUROC ~0.88–0.92 and balanced accuracy ~0.78–0.82 sit in a believable
-range for dermoscopy malignancy classification without the benefit of a large pretraining
-corpus in-domain, and land within a hair of the best published PAD-UFES-20 multimodal
-result (0.832 bal. acc) despite ~7x less data (see Literature context above). The more
-clinically relevant number — sensitivity on the malignant class, ~0.67–0.74 depending on
-config — is moderate, and worth flagging plainly as a limitation (missing roughly a
-quarter to a third of malignant lesions) rather than downplaying it. The paper's real
-strength is not "we beat some accuracy number," it's the robustness analyses this dataset
-uniquely enables (see above) — that's the honest novelty pitch for INDICON's biomedical
-imaging track (see prior discussion in this session). Note also that "SOTA" is a hollow
-claim here in the literal sense — we're the first and only benchmark on MCR-SL, so there
-is no prior number to have beaten; lead with "first benchmark + robustness analysis," not
-"SOTA," in the abstract/intro.
+weak one either. AUROC ~0.88–0.92 and balanced accuracy ~0.78–0.84 sit in a believable
+range for dermoscopy malignancy classification without a large in-domain pretraining corpus.
+
+~~and land within a hair of the best published PAD-UFES-20 multimodal result (0.832 bal. acc)
+despite ~7x less data~~ — **struck: this repeated the retracted PAD-UFES-20 comparison.** That
+0.832 is a *six-class* balanced accuracy and is not a valid comparator for a binary task (see
+"Literature context" above, which corrected it). The only verified binary comparator is
+DiffMIC's 0.836 on 2298 images — a different dataset, so cross-dataset context rather than a
+benchmark, and our 0.840 ± 0.095 is statistically indistinguishable from it either way.
+
+The more clinically relevant number — sensitivity on the malignant class, ~0.67–0.81 depending
+on config — is moderate, and worth flagging plainly as a limitation (missing roughly one in
+five malignant lesions even at best) rather than downplaying it. The paper's real strength is
+not "we beat some accuracy number," it's the robustness analyses this dataset uniquely enables
+(see above) — that's the honest novelty pitch for INDICON's biomedical imaging track. Note also
+that "SOTA" is a hollow claim here in the literal sense — we're the first and only benchmark on
+MCR-SL, so there is no prior number to have beaten; lead with "first benchmark + a
+shuffled-control-validated quality-adaptive loss + six robustness analyses," not "SOTA," in the
+abstract/intro.
+
+## Reproducibility specification (for the paper's implementation-details paragraph)
+
+Every number in this document comes from these settings. Defaults live in `config.py`;
+anything not listed was not varied.
+
+| hyperparameter | value | notes |
+|---|---|---|
+| backbone | EfficientNet-B0, ImageNet-pretrained (`timm`) | fully trainable, no frozen layers |
+| input resolution | 224 × 224 | ImageNet mean/std normalization |
+| batch size | 16 | |
+| epochs | 30 | fixed, no early stopping in the reported runs |
+| optimizer | Adam | `sam_adamw` / `adamw_cosine_discriminative` only in named runs |
+| learning rate | 1e-4 | single LR (discriminative LR only in `optimizerv2`) |
+| weight decay | 1e-4 | |
+| seed | 42 | fold assignment + init; **single seed, not averaged over seeds** |
+| folds | 5, subject-disjoint, greedy malignant-balanced | `data/folds.py` |
+| checkpoint selection | best val-fold balanced accuracy | val fold = `(test_fold + 1) % 5` |
+| aux 9-class loss weight | 0.4 | |
+| quality head loss weight | 0.15 | `quality_aware=True` runs only |
+| focal γ | 0.0 (plain weighted BCE) | 2.0 in `channel_gated_focal` |
+| categorical embedding dim | 12 per field (+1 "unknown" slot) | 16 fields → 192-d |
+| metadata MLP | 200 → 128 → 128, ReLU, Dropout 0.2 | |
+| fusion projection | → 256-d, ReLU, Dropout 0.3 | shared by both fusion variants |
+| SAM ρ | 0.05 | one value, no sweep |
+| SWA start | 75% of training, BN-recalibrated | `use_swa` runs only |
+| train augmentation | RandomResizedCrop(0.8–1.0), HFlip, Rotation(15°), ColorJitter(0.2/0.2) | train split only |
+| val/test transform | Resize(1.15×) + CenterCrop | no augmentation |
+
+**Single-seed caveat, stated plainly**: every result is one seed. Given fold-to-fold std of
+0.08–0.17 on the headline metrics, a different seed would plausibly reorder configs separated
+by less than ~0.05 balanced accuracy. Multi-seed averaging is the single highest-value
+robustness improvement available and was not done — disclose it, don't bury it.
+
+**Environment**: A100-PCIE-40GB, conda env `brats` (shared with a sister project; only `timm`,
+`scikit-learn`, `zenodo_get` were added, nothing upgraded). Typical run ~65 min for 5 folds;
+SAM runs took the same wall-clock time, indicating the pipeline was data-loading-bound rather
+than compute-bound at this model size.
+
+### Exact commands to reproduce each result group
+
+```bash
+# 0. Schema validation FIRST (fails loudly on any column/dtype/value-set drift)
+python data/validate_schema.py --data-dir $DATA
+
+# 1. Core ablation matrix (rows 18/19/22/27)
+bash scripts/run_full_experiment_matrix.sh $DATA
+
+# 2. Extended experiments (SAM, focal, preprocessing, contrastive, optimizerv2, combined)
+bash scripts/run_extended_experiments.sh $DATA
+
+# 3. Eval-time-only variants on any trained checkpoint set (no retraining)
+python scripts/reeval_eval_time_options.py --base-run-tag <tag> --data-dir $DATA
+
+# 4. Quality-adaptive loss reweighting (trust / hard_mining) + tercile analysis
+bash scripts/run_quality_adaptive_loss.sh $DATA
+
+# 5. Shuffled-quality control (the validity check for #4)
+bash scripts/run_shuffled_quality_control.sh $DATA
+
+# 6. SWA diagnostic
+bash scripts/run_swa_experiments.sh $DATA
+
+# 7. Robustness analyses 1-4 (+ master summary table, confusion matrices, OOF predictions)
+python robustness_analysis.py --data-dir $DATA
+
+# 8. Robustness analyses 5-6 (certainty, intra-subject) - CPU only, no GPU needed
+python scripts/robustness_analyses_5_6.py --data-dir $DATA
+
+# 9. Image-level training / fold-safety verification
+python scripts/verify_image_level_training.py --data-dir $DATA
+
+# Utilities
+python scripts/report_ledger_rows.py <tag> [<tag>...]   # aggregated mean+/-std from the ledger
+python scripts/dedupe_ledger.py [--apply]                # audited duplicate-row cleanup
+```
+`$DATA` = `~/mcrsl_project/data/raw/extracted/MCR-SL_dataset` on the remote.
+
+## Artifact inventory — which file backs which claim
+
+Anything cited in the paper should be traceable to one of these. All under `results/`.
+
+| artifact | backs |
+|---|---|
+| `results_ledger.csv` | every per-fold metric, every run (append-only, sole writer is `train.py`) |
+| `summary_table.csv` | master mean±std table, regenerated from the ledger |
+| `oof_predictions_<cfg>.csv` | per-lesion out-of-fold predictions; input to analyses 1/3/4/5/6 |
+| `confusion_matrix_<cfg>.csv/.png` | aggregated confusion matrices |
+| `aux_9class_<cfg>.csv` | 9-class exploratory table, small-N flags included |
+| `robustness_quality_tercile_<cfg>.csv/.png` | analysis 1 |
+| `robustness_quality_aware_comparison.csv/.png` | analysis 2 |
+| `robustness_histopath.csv` | analysis 3 |
+| `robustness_metadata_importance.csv/.png` | analysis 4 |
+| `robustness_certainty_tercile_<cfg>.csv/.png` | analysis 5 (tercile table) |
+| `robustness_certainty_vs_quality_<cfg>.csv` | analysis 5 (two-axis comparison) |
+| `robustness_certainty_by_class_<cfg>.csv` | analysis 5 (the class control that changed the conclusion) |
+| `robustness_intra_subject_<cfg>.csv/.png` | analysis 6 (per-subject accuracy) |
+| `robustness_intra_subject_summary_<cfg>.csv` | analysis 6 (permutation result) |
+| `robustness_quality_reweighting_comparison.csv/.png` | four-mechanism tercile comparison |
+| `robustness_quality_reweighting_gaps.csv` | high−low gap per mechanism |
+| `robustness_shuffled_quality_control.csv/.png` | the shuffled control (real vs. shuffled) |
+| `paper_examples/` | example lesion images for the qualitative figure |
+| `logs/train_<tag>.log` | full per-epoch training curves (the source for the root-cause diagnosis) |
+
+## Suggested paper-section mapping
+
+| paper element | content | source |
+|---|---|---|
+| Abstract | first benchmark on MCR-SL; quality-adaptive loss reweighting validated against a shuffled control; six robustness analyses | — |
+| II. Dataset | composition table, fold construction, missingness policy | "Dataset composition", "Fold composition" |
+| III-A. Architecture | block-by-block spec, Fig. 1 | "Architecture" |
+| III-B. Protocol | subject-disjoint 5-fold, checkpoint selection, metrics | "Task & protocol" |
+| III-C. Quality-adaptive loss | `trust` / `hard_mining` formulas + motivation | "Quality-adaptive loss reweighting" |
+| IV. Table I — core ablation | rows 18/19/22/27 | "Core ablation matrix" |
+| IV. Table II — extended | rows 4/6–10/12/14/17/21/25/26 | "Extended experiments" |
+| IV. Table III — quality reweighting | plain / trust / hard_mining | "Quality-adaptive loss reweighting" |
+| IV. Table IV — **shuffled control** | real vs. shuffled, both mechanisms | "Shuffled-quality control" |
+| IV. Table V — best config | `hard_mining` + TTA + multi-image, with std | "Eval-time variants" |
+| V. Robustness | six analyses, each with its N | "Robustness analyses" |
+| VI. Limitations | consolidated list below | "Consolidated limitations" |
+| VI. Future work | clinical images; image-level pos_weight; multi-seed | "Not yet tried" |
+
+## Consolidated limitations (draft the Limitations section straight from this)
+
+Ordered roughly by how much a reviewer would care.
+
+1. **Scale.** 234 binary-usable lesions, 42 malignant, ~8–9 malignant per test fold. This is the
+   dominant constraint on every conclusion and the documented cause of the balanced-accuracy
+   ceiling (see the SWA diagnostic). One malignant lesion flipping moves a fold's sensitivity by
+   ~0.11.
+2. **Single seed.** No multi-seed averaging. Config orderings within ~0.05 balanced accuracy are
+   not robust.
+3. **Fold subject imbalance.** Folds hold 5, 6, 16, 16, 16 subjects — balanced on malignant
+   count, not on subjects. Fold 0's test set is 5 subjects' worth of lesions.
+4. **Moderate sensitivity.** 0.76–0.81 on the best configs: roughly one in five malignant
+   lesions missed. State this plainly; it is the clinically decisive number.
+5. **`pos_weight` miscalibration.** Computed lesion-level, applied to image-level batches; ~16%
+   high, systematically, in all five folds. Quantified and deliberately not corrected — see
+   Check 4.
+6. **No external validation.** Everything is within-MCR-SL cross-validation. The DiffMIC
+   comparison is cross-dataset context, not a benchmark.
+7. **9-class task is exploratory only.** MEL 8, SCC 4, ANG 4, DF 2 — four classes below 10
+   lesions. Never present per-class metrics for these as robust.
+8. **Multiple comparisons.** Six robustness analyses, many p-values, no correction applied.
+9. **Clinical images unused.** 779 of 2131 images (37%) never entered training.
+10. **Metadata importance is architecture-confounded.** Numeric fields get one z-scored scalar
+    vs. 12 dims per categorical field, so the ranking reflects capacity, not clinical relevance.
+11. **Histopathology subset (n=28) is qualitative only.** No CI, no p-value.
+12. **LDAM + gradient clipping were bundled** into one run, so their contributions cannot be
+    attributed separately — a shortcut taken under deadline pressure.
 
 ## Known data/pipeline caveats (for the methods section)
 - 21 `lesion_id`s in `image.xlsx` (263 images) have no matching row in `lesion.xlsx` and
@@ -721,6 +1034,57 @@ is no prior number to have beaten; lead with "first benchmark + robustness analy
   with the `quality_aware=True` auxiliary-head run). Recovered by re-evaluating the untouched
   checkpoints — recovered values matched the original numbers to 4 decimal places, no data
   actually lost. See "Quality-adaptive loss reweighting" section above for full detail.
+
+## Abstract-ready numbers (copy these, with their stds)
+
+The five numbers most likely to be quoted, in the form they should be quoted:
+
+- **Best configuration**: `channel_gated` + quality-adaptive `hard_mining` loss reweighting +
+  TTA + multi-image test-time averaging — **balanced accuracy 0.840 ± 0.095**, accuracy
+  0.875 ± 0.075, sensitivity 0.783 ± 0.167, specificity 0.896 ± 0.094, AUROC 0.918 ± 0.058.
+- **Best single trained model** (no eval-time tricks): `channel_gated_qweight_hard_mining` —
+  **balanced accuracy 0.820 ± 0.078**, sensitivity 0.764 ± 0.130, AUROC 0.906 ± 0.059.
+- **Plain main-method baseline**: `channel_gated` — balanced accuracy 0.783 ± 0.076,
+  sensitivity 0.672 ± 0.142, AUROC 0.881 ± 0.058.
+- **Quality-adaptive loss gain**: +0.037 balanced accuracy and +0.092 sensitivity over the
+  plain baseline, **and it collapses to 0.775 / 0.667 under an information-matched shuffled
+  control** — i.e. back to baseline, which is the evidence that the gain is quality-specific.
+- **Robustness headline**: across six analyses, no reliable relationship between model error
+  and either image quality or expert diagnostic certainty once class composition is controlled;
+  no subject-level error clustering (p=0.954, N=55 subjects).
+
+**Framing rule for the abstract**: lead with *"first benchmark on MCR-SL + a quality-adaptive
+loss validated by a shuffled control"*, not with a SOTA claim. There is no prior MCR-SL number
+to beat, and the 0.840 vs. DiffMIC's 0.836 comparison is cross-dataset and well inside the
+noise.
+
+## Chronology — what was tried, in order, and why
+
+Useful for the discussion section's narrative, and as an honest record of how the conclusions
+moved.
+
+| # | experiment | outcome |
+|---|---|---|
+| 1 | Core matrix (image_only / late_fusion / channel_gated) | channel_gated not a clean win; image_only beats it on bal_acc |
+| 2 | Auxiliary quality-prediction head | **negative** — worse everywhere; tercile gap widened 0.091→0.101 |
+| 3 | Extended sweep (SAM, TTA, focal, preprocessing, contrastive, optimizerv2) | SAM+TTA best at 0.822; contrastive/optimizerv2 negative |
+| 4 | Stacking everything (`combined`) | **negative** — 0.759, below plain baseline |
+| 5 | Robustness analyses 1–4 | no strong quality-performance relationship (analysis 1) |
+| 6 | Quality-adaptive loss: `trust` / `hard_mining` | `hard_mining` **best single result** 0.820; `trust` appears to narrow tercile gap |
+| 7 | Threshold recalibration on `hard_mining` | **no gain** — val signal too noisy to calibrate |
+| 8 | LDAM margin + grad clip on `hard_mining` | **negative** — sensitivity fell 0.067 (opposite of intent) |
+| 9 | SAM+TTA on `hard_mining` | **negative** — 0.789, below both parents |
+| 10 | SWA on `hard_mining` | **negative** — more stable but stably biased to specificity |
+| 11 | `channel_gated_swa` diagnostic | variance is an inherent small-N floor, not a checkpoint artifact |
+| 12 | **Shuffled-quality control** | `hard_mining` **validated**; `trust` **invalidated** (→ null) |
+| 13 | Image-level training verification | premise of the "all-images" task was false; fold safety **confirmed** |
+| 14 | Eval-time variants on `hard_mining` | **best overall config**, 0.840, free |
+| 15 | Robustness analyses 5–6 | certainty → **null** after class control; no subject clustering |
+
+**Three conclusions were reversed by follow-up checks** (6→12 for `trust`, the pooled certainty
+result in 15, and the "all-images gap" premise in 13). That pattern is itself worth a sentence
+in the discussion: on a dataset this size, an uncontrolled first look produces plausible-looking
+positives that controls dissolve.
 
 ## Not yet tried / explicitly out of scope this sprint
 - Optional stretch ablation: text-templated metadata + channel-gated fusion (CLAUDE.md
