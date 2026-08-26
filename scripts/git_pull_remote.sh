@@ -27,7 +27,12 @@ PROJECT_DIR="$HOME/mcrsl_project"
 
 if [ -d "$GIT_DIR/.git" ]; then
   echo "=== git pull (existing checkout at $GIT_DIR) ==="
-  git -C "$GIT_DIR" pull origin main
+  # `git -C` needs git>=1.8.5, not available on this machine's git — cd
+  # instead, restoring cwd after (set -e means a failed pull still exits
+  # before the popd, which is fine — we don't want to rsync a broken pull).
+  pushd "$GIT_DIR" >/dev/null
+  git pull origin main
+  popd >/dev/null
 else
   echo "=== git clone (first time) ==="
   git clone "$REPO_URL" "$GIT_DIR"
