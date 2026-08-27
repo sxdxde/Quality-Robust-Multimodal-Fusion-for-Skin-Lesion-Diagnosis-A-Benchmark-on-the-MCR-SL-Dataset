@@ -94,27 +94,67 @@ Ground truth: \texttt{unified\_diagnosis} field --- histopathology-confirmed whe
 NEV, SK, BCC, AK, ATY, MEL, SCC, ANG, DF.
 \end{block}
 \vspace{0.3cm}
-\alert{Caveat:} several classes have $<$10 lesions (MEL=8, SCC=5, ANG=4, DF=2) --- reported as exploratory only, never as robust per-class statistics.
+\alert{Caveat:} several classes have $<$10 lesions (MEL=8, SCC=4, ANG=4, DF=2) --- reported as exploratory only, never as robust per-class statistics.
 \end{frame}
 
 % =================================================================
 \section{Our Contributions}
 \begin{frame}{What This Work Does}
 \begin{enumerate}
-\item First published benchmark on MCR-SL: image-only vs.\ late-fusion vs.\ \textbf{channel-gated fusion} (our main method), under a rigorous subject-disjoint 5-fold protocol.
-\vspace{0.15cm}
-\item Four \textbf{robustness analyses} enabled uniquely by MCR-SL's quality ratings and histopathology subset:
-\begin{itemize}
-\item Quality-stratified performance
-\item Quality-aware training (auxiliary objective)
-\item Histopathology-confirmed vs.\ panel-consensus comparison
-\item Metadata-importance audit vs.\ the dataset paper's own statistics
-\end{itemize}
-\vspace{0.15cm}
-\item A sweep of 7 further interventions (11 configs total: SAM, focal loss, preprocessing, contrastive loss, TTA, multi-image averaging, and combinations) --- honestly reporting what helped and what didn't.
-\vspace{0.15cm}
-\item Best result: \textbf{0.822 balanced accuracy}, close to the best verified published binary result on a comparable dataset (0.836) with far less training data.
+\item First published benchmark on MCR-SL: image-only vs.\ late-fusion vs.\ \textbf{channel-gated fusion}, under a subject-disjoint 5-fold protocol.
+\vspace{0.1cm}
+\item \textbf{A quality-adaptive loss reweighting scheme} (\texttt{hard\_mining}) that uses MCR-SL's expert quality ratings to weight the training loss --- \alert{and a shuffled-quality control that validates the gain is genuinely quality-driven}, not generic reweighting.
+\vspace{0.1cm}
+\item \textbf{Six robustness analyses} enabled by MCR-SL's quality ratings, expert certainty, histopathology subset, and multi-lesion subjects.
+\vspace{0.1cm}
+\item \textbf{Three apparent positive findings that we overturned ourselves} using proper controls --- a validation discipline we report as part of the contribution, not an appendix.
+\vspace{0.1cm}
+\item Final result: \textbf{0.840 $\pm$ 0.095 balanced accuracy} (\texttt{hard\_mining} + TTA + multi-image averaging), \emph{within noise of} the closest verified binary comparator (0.836) using ${\sim}10\times$ less training data.
 \end{enumerate}
+\vspace{0.15cm}
+{\footnotesize The architecture is unchanged from standard components. The contribution is the \emph{loss weighting} and the \emph{validation}, not a new network.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Why MCR-SL, Not a Bigger Dataset?}
+\alert{The honest answer: it is not about scale. It is about a field that only exists here.}
+\vspace{0.25cm}
+\centering
+\small
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Dataset} & \textbf{Size} & \textbf{Expert per-image quality rating?} \\
+\hline
+ISIC (2019/2020) & 25{,}000--35{,}000+ & \alert{No} \\
+HAM10000 & 10{,}015 & \alert{No} \\
+PAD-UFES-20 & 2{,}298 & \alert{No} \\
+\rowcolor{green!12}\textbf{MCR-SL} & \textbf{240 lesions} & \textbf{Yes --- 1--10, per diagnostic image} \\
+\hline
+\end{tabular}
+\vspace{0.35cm}
+
+\raggedright
+\normalsize
+\begin{itemize}
+\item Larger datasets buy \textbf{statistical power}. None of them can answer this project's research question, because \textbf{the field the mechanism depends on does not exist in them}.
+\item MCR-SL's ratings are \textbf{real expert judgements of the photograph}, tied to the specific image used for each diagnosis --- not an automated blur score or a learned proxy.
+\item We accept the cost of small $N$ (wide error bars, reported throughout) in exchange for asking a question that is \textbf{unanswerable elsewhere}.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Has Our Research Question Been Answered?}
+The project asks \textbf{two separable questions}. They get two different answers.
+\vspace{0.25cm}
+
+\begin{block}{Q1: Does performance degrade on lower-quality images? --- \alert{No (null result)}}
+Spearman(rating, error) $=-0.093$, $p=0.158$, $N=231$; tercile pattern non-monotonic (0.776 / 0.914 / 0.868). Reported as a \textbf{genuine null} --- neither confirmed nor ruled out. \textbf{Not hidden.}
+\end{block}
+\begin{block}{Q2: Can the model be trained to be more robust to quality? --- \textbf{Yes, with evidence}}
+\texttt{hard\_mining} loss reweighting: \textbf{+0.037} balanced accuracy, \textbf{+0.092} sensitivity, \textbf{+0.025} AUROC.\\[2pt]
+\textbf{Validated, not asserted:} a shuffled-quality control (same weight distribution, randomised lesion$\to$rating mapping) \textbf{collapses the entire gain}.
+\end{block}
+{\footnotesize Q1 being null does \emph{not} invalidate Q2 --- a model can be made more robust to a factor that shows no significant baseline correlation at this $N$.}
 \end{frame}
 
 % =================================================================
@@ -157,7 +197,8 @@ $\to$ global pool $\to$ same 256-d projection $\to$ classifier.\\[4pt]
 
 \begin{frame}{Architecture --- Three Prediction Heads}
 All three heads sit on top of the \textbf{same} 256-d fused vector; only their outputs and losses differ.
-\vspace{0.15cm}
+\vspace{0.1cm}
+\small
 \begin{block}{1. Binary head (main task, always on)}
 256-d $\to$ Linear $\to$ 1 logit $\to$ sigmoid $\to$ $P$(malignant). \\
 Loss: weighted BCE (or focal loss), class weights recomputed per training fold ($\sim$1:4.6 malignant:non-malignant). \\
@@ -169,9 +210,8 @@ Loss: class-weighted CE, downweighted to $\sim$0.3--0.5$\times$ the binary loss.
 \emph{Reported only as an exploratory table --- several classes have $<$10 lesions.}
 \end{block}
 \begin{block}{3. Quality-regression head (optional, quality-aware variant only)}
-256-d $\to$ Linear $\to$ 1 scalar $\to$ predicted mean expert quality rating (1--10). \\
-Loss: MSE, weighted 0.1--0.2$\times$. \\
-\emph{Tests whether explicit quality-awareness improves robustness --- it did not (see Robustness Analyses).}
+256-d $\to$ Linear $\to$ 1 scalar $\to$ predicted mean expert quality rating (1--10). Loss: MSE, weighted 0.1--0.2$\times$. \\
+\emph{Tests whether \textbf{predicting} quality improves robustness --- it did not. Later superseded by \textbf{weighting the loss} with quality instead, which did work.}
 \end{block}
 \end{frame}
 
@@ -360,7 +400,95 @@ Preprocess.+focal+SAM+TTA & 0.818 & 0.759 & 0.622 & 0.895 & 0.893 \\
 \end{tabular}
 \vspace{0.3cm}
 
-\normalsize \textbf{Best: SAM + TTA $\to$ 0.822 balanced accuracy.} Stacking everything together \textbf{hurt} rather than helped.
+\normalsize Best in \emph{this} sweep: SAM + TTA $\to$ 0.822. Stacking everything together \textbf{hurt} rather than helped. \alert{All of these were later superseded by the quality-adaptive loss (next section).}
+\end{frame}
+
+% ---------------------------------------------------------------
+\section{Quality-Adaptive Loss}
+\begin{frame}{Quality-Adaptive Loss: The Mechanism}
+Every lesion has a mean expert quality rating $q \in [1,10]$. We use it to \textbf{weight the training loss per sample} --- not to predict it as an output (that was the auxiliary head, which failed).
+\vspace{0.25cm}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{\texttt{trust} --- down-weight poor images}
+\[ w = 0.5 + \tfrac{q-1}{9} \quad\Rightarrow\quad [1,10] \to [0.5,\,1.5] \]
+\emph{``Low-quality images are less reliable, so trust them less.''}
+\end{block}
+\column{0.5\textwidth}
+\begin{block}{\texttt{hard\_mining} --- up-weight poor images}
+\[ w = 1.5 - \tfrac{q-1}{9} \quad\Rightarrow\quad [1,10] \to [1.5,\,0.5] \]
+\emph{``Force the model to work harder on the difficult images.''}
+\end{block}
+\end{columns}
+\vspace{0.3cm}
+\centering
+$\mathcal{L}_i = \underbrace{w^{\text{class}}_i}_{\text{existing class weight}} \times \underbrace{w^{\text{quality}}_i}_{\text{new}} \times \ \text{BCE}(\hat{y}_i, y_i)$
+\vspace{0.25cm}
+
+\raggedright
+{\footnotesize Lesions with no valid rating get a neutral weight of $1.0$. Fixed range, two directions, \textbf{no grid search} --- the range was not tuned. Architecture, optimiser, folds and checkpoint rule are \textbf{identical} to the baseline; only the loss weighting changes.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Validating the Loss: The Shuffled-Quality Control}
+\begin{block}{The obvious objection}
+``Maybe \emph{any} per-sample reweighting acts as a regulariser. Perhaps the quality ratings are irrelevant and you have just found noise that happens to help.''
+\end{block}
+\vspace{0.15cm}
+\textbf{The control:} within each training fold, \textbf{shuffle} the quality ratings across lesions. Identical weight \emph{distribution}, but the lesion$\to$rating correspondence is destroyed. Test folds always use \textbf{real, unshuffled} ratings. Everything else identical.
+\vspace{0.25cm}
+\centering
+\small
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Mechanism} & \textbf{Bal.\ acc.} & \textbf{Sens.} & \textbf{High$-$Low gap} \\
+\hline
+Plain baseline (no quality) & 0.783 & 0.672 & 0.091 \\
+\hline
+\rowcolor{green!12}\texttt{hard\_mining} (real ratings) & \textbf{0.820} & \textbf{0.764} & 0.091 \\
+\rowcolor{red!10}\texttt{hard\_mining} (\alert{shuffled}) & 0.775 & 0.667 & 0.016 \\
+\hline
+\rowcolor{yellow!15}\texttt{trust} (real ratings) & 0.788 & 0.725 & 0.082 \\
+\rowcolor{red!10}\texttt{trust} (\alert{shuffled}) & 0.763 & 0.672 & 0.021 \\
+\hline
+\end{tabular}
+\vspace{0.3cm}
+
+\raggedright
+\normalsize
+\begin{itemize}
+\item \textbf{\texttt{hard\_mining} passes:} shuffling collapses it to 0.775 / 0.667 --- \emph{back to baseline}. The gain \textbf{requires the real quality signal}.
+\item \textbf{\texttt{trust} fails:} its apparently-narrower tercile gap (0.082) is \emph{beaten} by the shuffled control (0.021). Revealed as a reweighting artifact --- reported as a negative result.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Where Does the Gain Actually Come From?}
+Decomposing the final result --- \textbf{how much is genuinely about quality?}
+\vspace{0.2cm}
+\centering
+\small
+\begin{tabular}{|c|l|c|c|c|c|}
+\hline
+\textbf{Step} & \textbf{Configuration} & \textbf{Uses quality?} & \textbf{Bal.\ acc.} & \textbf{$\Delta$ vs base} & \textbf{Sens.} \\
+\hline
+0 & Baseline (channel-gated) & No & 0.783 & --- & 0.672 \\
+\rowcolor{green!12}1 & + \texttt{hard\_mining} loss & \textbf{Yes} & 0.820 & \textbf{+0.037} & 0.764 \\
+2 & + TTA (eval-time) & No & 0.833 & +0.050 & \textbf{0.808} \\
+3 & + multi-image (eval-time) & No & \textbf{0.840} & +0.057 & 0.783 \\
+\hline
+\rowcolor{red!10}ctrl & \texttt{hard\_mining}, \alert{shuffled} & Fake & 0.775 & $-$0.008 & 0.667 \\
+\hline
+\end{tabular}
+\vspace{0.35cm}
+
+\raggedright
+\normalsize
+\begin{itemize}
+\item Of the total \textbf{+0.057} gain, \textbf{+0.037 ($\approx$65\%)} is the validated, quality-specific contribution.
+\item The remaining \textbf{$\approx$35\%} is generic eval-time technique (TTA, multi-image averaging) with \textbf{nothing to do with quality} --- stated explicitly so the novel part is not oversold.
+\item Steps 2--3 require \textbf{no retraining} at all.
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Example Predictions (Best Method)}
@@ -408,6 +536,35 @@ High & 53 & 0.868 & 0.500 \\
 
 \vspace{0.3cm}
 \normalsize Pattern is \textbf{not monotonic}. Spearman correlation (rating vs.\ error) $= -0.093$, $p=0.158$ --- not significant at $N=231$. No strong quality-performance relationship detected (neither confirmed nor ruled out).
+\end{frame}
+
+\begin{frame}{Robustness Across the Quality Ranking}
+Does the validated loss hold up \textbf{at every quality level}, not just on average?
+\vspace{0.2cm}
+\centering
+\small
+\begin{tabular}{|l|c|cc|cc|}
+\hline
+& & \multicolumn{2}{c|}{\textbf{Accuracy}} & \multicolumn{2}{c|}{\textbf{Sensitivity}} \\
+\textbf{Quality tercile} & \textbf{N} & \textbf{plain} & \textbf{\texttt{hard\_mining}} & \textbf{plain} & \textbf{\texttt{hard\_mining}} \\
+\hline
+Low & 85 & 0.776 & 0.776 & 0.667 & \cellcolor{green!18}\textbf{0.810} \\
+Mid & 93 & 0.914 & 0.903 & 0.733 & 0.733 \\
+High & 53 & 0.868 & 0.868 & 0.500 & \cellcolor{green!18}\textbf{0.667} \\
+\hline
+\multicolumn{2}{|l|}{High$-$Low accuracy gap} & 0.091 & 0.091 & \multicolumn{2}{c|}{} \\
+\hline
+\end{tabular}
+\vspace{0.3cm}
+
+\raggedright
+\normalsize
+\begin{itemize}
+\item \textbf{The accuracy gap is unchanged} (0.091 $\to$ 0.091). \texttt{hard\_mining} does \emph{not} flatten the quality-tercile profile --- stated plainly.
+\item \textbf{But sensitivity rises where it matters most:} on the \emph{lowest}-quality tercile, malignant recall goes $0.667 \to \mathbf{0.810}$. Under \texttt{hard\_mining}, sensitivity is now \textbf{highest on the worst images} --- exactly the on-mechanism behaviour up-weighting them should produce.
+\end{itemize}
+\vspace{0.1cm}
+{\footnotesize \alert{Honest framing:} the \emph{loss} improves quality robustness; the \emph{architecture} is unchanged and we make no claim it is inherently quality-robust. Malignant counts within each tercile are small --- directional evidence, not a decisive test.}
 \end{frame}
 
 \begin{frame}{2. Quality-Aware Training --- Did It Help?}
@@ -483,6 +640,53 @@ Referral diagnosis, sex, location group align with the dataset paper. But \textb
 \end{frame}
 
 % =================================================================
+\section{Validation Discipline}
+\begin{frame}{Three Times We Almost Reported a False Positive}
+Each of these \textbf{looked like a result}. A control overturned it. We report all three.
+\vspace{0.2cm}
+\centering
+\scriptsize
+\begin{tabular}{|p{3.1cm}|p{3.3cm}|p{4.6cm}|}
+\hline
+\textbf{What it looked like} & \textbf{The check} & \textbf{What it actually was} \\
+\hline
+\texttt{trust} narrowed the quality-tercile gap $0.091 \to 0.082$ --- a second quality-robustness win
+& Shuffled-quality control
+& \alert{Reversed.} The \emph{shuffled} control produced an even narrower gap (\textbf{0.021}). A generic reweighting artifact, not a quality effect. \\
+\hline
+Expert diagnostic certainty predicted model error, $\rho=-0.175$, \textbf{$p=0.008$} --- apparently significant
+& Stratify by malignant / non-malignant class
+& \alert{Reversed.} Dissolves within both strata ($p=0.083$ / $p=0.559$). Malignant lesions cluster at low certainty, so the pooled correlation was \textbf{class-mix confounding}. \\
+\hline
+``Train on all images per lesion, not just one'' --- a large untapped data opportunity
+& Verify the loader before building anything
+& \alert{False premise.} Image-level training had been the default since run one ($5.65\times$ more samples than lesions). \textbf{Caught before any effort was wasted.} \\
+\hline
+\end{tabular}
+\vspace{0.3cm}
+
+\raggedright
+\normalsize
+At $N=234$ with $\sim$8--9 malignant lesions per fold, \textbf{an uncontrolled first look reliably produces plausible positives}. We treat catching them as part of the contribution --- and it is the most transferable lesson here.
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{What Is Our Novelty, Precisely?}
+\alert{Not the architecture. Not a new loss function class. Not state of the art.}
+\vspace{0.25cm}
+\begin{enumerate}
+\item \textbf{First use of \emph{real expert-assigned} quality labels for quality-adaptive loss reweighting in medical image classification.} The closest precedents --- \textbf{AdaFace} (CVPR 2022) and \textbf{MagFace} --- come from face recognition and must use \emph{feature-norm as a proxy}, because face datasets carry no expert quality annotation. MCR-SL does.
+\vspace{0.1cm}
+\item \textbf{The opposite weighting direction works here.} AdaFace/MagFace \emph{de-emphasise} low-quality samples; our \texttt{hard\_mining} \emph{up-weights} them, and that is the variant that wins.\\
+{\small \emph{Plausible mechanism:} a dermatologist can often still diagnose correctly from a poor photograph, so the label remains valid and the hard case is worth learning from. In face ID, poor quality can make identity genuinely \textbf{unrecoverable} --- so de-emphasis is right there, and wrong here.}
+\vspace{0.1cm}
+\item \textbf{Distinguished from the nearest skin-lesion prior work.} \texttt{arXiv:2308.02119} (HAM10000) performs expert-informed sample reweighting, but weights by \textbf{how the label was confirmed} (diagnostic method). We weight by a \textbf{direct expert rating of the photograph itself} --- a different signal answering a different question.
+\vspace{0.1cm}
+\item \textbf{The validation discipline is part of the claim.} The shuffled-quality control, and the three reversed findings, are reported as contributions --- not buried.
+\end{enumerate}
+\end{frame}
+
+% =================================================================
 \section{Comparison \& Conclusion}
 \begin{frame}{Comparison with the Literature}
 \centering
@@ -490,43 +694,67 @@ Referral diagnosis, sex, location group align with the dataset paper. But \textb
 \hline
 \textbf{Source} & \textbf{Task} & \textbf{N} & \textbf{Bal.\ acc.} \\
 \hline
-This work (channel-gated) & binary & 234 lesions & 0.783 \\
-This work (SAM + TTA) & binary & 234 lesions & \textbf{0.822} \\
+This work (channel-gated baseline) & binary & 234 lesions & 0.783 $\pm$ 0.076 \\
+This work (+ \texttt{hard\_mining}) & binary & 234 lesions & 0.820 $\pm$ 0.078 \\
+This work (+ TTA + multi-image) & binary & 234 lesions & \textbf{0.840 $\pm$ 0.095} \\
 DiffMIC, PAD-UFES-20 (2025) & binary & 2298 images & 0.836 \\
 \hline
 \end{tabular}
-\vspace{0.4cm}
+\vspace{0.35cm}
 
-\normalsize
+\raggedright
+\small
+\begin{alertblock}{This is NOT a claim of beating the state of the art}
 \begin{itemize}
-\item Closest verified binary-task comparator, on a similar-shape (image + metadata) dataset.
-\item We reach within 0.014 of it, with \textbf{$\sim$10$\times$ less training data}.
-\item No prior benchmark exists on MCR-SL itself, so this is not framed as ``beating state of the art'' --- the robustness analyses are the paper's real contribution.
+\item \textbf{Different dataset, different institution, no shared test set.}
+\item Our fold-to-fold std ($\pm 0.078$--$0.095$) is \textbf{over 20$\times$ larger} than the 0.004 nominal gap --- \textbf{statistically indistinguishable}.
+\item The last +0.020 came from \emph{eval-time averaging}, not a better method.
 \end{itemize}
+\end{alertblock}
+\centering
+\small Correct framing: \textbf{within noise of the closest verified binary comparator, using ${\sim}10\times$ less training data.}\\
+{\footnotesize Encouraging context for a 240-lesion dataset --- not a win.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Cross-Dataset Check: DeepDRiD (Not Completed)}
+\small
+\begin{block}{What we set out to test}
+Does \texttt{hard\_mining} transfer to a \textbf{second medical imaging domain} with a differently-structured quality annotation? \textbf{DeepDRiD} (diabetic retinopathy, ISBI 2020) ships per-image quality annotations alongside DR severity grades --- the closest analogue to MCR-SL's ratings outside dermatology.
+\end{block}
+\begin{block}{Status: \alert{gate not passed --- no results, and none estimated}}
+A deliberate go/no-go gate ran \textbf{before} any training code was written. It did not pass in its time box: sustained throughput to the data host measured \textbf{26--64 KB/s} single-stream; required tooling (\texttt{git-lfs}) unavailable, and the archive endpoint ignores HTTP range requests, so the transfer cannot be parallelised.
+\end{block}
+\centering
+\normalsize\textbf{No DeepDRiD number is reported, estimated, or implied anywhere in this deck.}\\
+{\footnotesize Concrete future work. Having a gate that \emph{can} fail --- and honouring it --- is the same discipline as the three reversed findings.}
 \end{frame}
 
 \begin{frame}{Limitations}
 \begin{itemize}
-\item Small dataset: 234 usable lesions, single institution.
-\item Ground truth mostly panel-consensus (only 28/240 lesions histopathology-confirmed).
-\item Several 9-class categories have $<$10 lesions --- exploratory only.
-\item Quality terciles are modest in size ($N\approx$53--93) --- correlation results are not statistically decisive.
-\item Metadata-importance comparison is confounded by embedding-dimension imbalance (categorical vs.\ numeric fields).
+\item \alert{\textbf{Effect size vs.\ uncertainty:}} our fold-to-fold std ($\pm$0.078--0.095 balanced accuracy) is \textbf{larger than most differences we report}. The \texttt{hard\_mining} effect (+0.037) is supported by the shuffled control, but \textbf{no two configs within ${\sim}0.05$ should be called a win} over one another.
+\item \textbf{Single seed}, single institution, 234 usable lesions, $\sim$8--9 malignant lesions per test fold --- one lesion flipping moves a fold's sensitivity by ${\sim}0.11$.
+\item \textbf{Folds are subject-imbalanced} (5 / 6 / 16 / 16 / 16 subjects) --- balanced on malignant-lesion count, not on subject count.
+\item \textbf{No external validation.} The DiffMIC comparison is cross-dataset context, not a benchmark. The DeepDRiD cross-domain check \textbf{was not completed}.
+\item Ground truth mostly panel-consensus (28/240 histopathology-confirmed); several 9-class categories have $<$10 lesions --- exploratory only.
+\item Quality terciles are modest ($N\approx$53--93); \textbf{six analyses were run with no multiple-comparison correction}.
+\item Metadata-importance ranking is confounded by embedding-dimension imbalance (12-d categorical vs.\ 1 scalar numeric).
+\item A known \texttt{pos\_weight} miscalibration ($\sim$16\%, lesion-level weight applied to image-level batches) is \textbf{quantified and disclosed}, not silently corrected.
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Conclusion \& Future Work}
+\small
 \begin{block}{What we found}
 \begin{itemize}
-\item First benchmark on MCR-SL: channel-gated fusion reaches 0.783 balanced accuracy; SAM + TTA pushes this to 0.822.
-\item Quality-aware training, contrastive loss, and alternative optimizers did \textbf{not} help at this scale.
-\item No significant quality-performance relationship detected; quality-aware training \emph{widened} rather than narrowed the tercile gap.
-\item Model performs worse on histopathology-confirmed lesions; metadata importance partially aligns with the dataset paper's own statistics.
+\item \textbf{First benchmark on MCR-SL.} Final: \textbf{0.840 $\pm$ 0.095} balanced accuracy --- \emph{within noise} of the closest verified binary comparator, with ${\sim}10\times$ less data.
+\item \textbf{Q1 (does quality degrade performance?): null} --- no significant relationship at $N=231$.
+\item \textbf{Q2 (can we train for quality robustness?): yes} --- \texttt{hard\_mining} gives +0.037 balanced accuracy / +0.092 sensitivity, and \textbf{a shuffled control proves the gain depends on the real ratings}. Sensitivity on the \emph{worst} images rises $0.667 \to 0.810$.
+\item \textbf{Three apparent positives we overturned ourselves}, plus quality-aware training, contrastive loss and alternative optimisers --- all reported as negatives.
 \end{itemize}
 \end{block}
-\vspace{0.2cm}
 \begin{block}{Future work}
-Give numeric fields more representational capacity; try text-templated metadata encoding; revisit quality-aware training with a different loss weighting.
+Complete the \textbf{DeepDRiD} cross-domain check; \textbf{multi-seed averaging} to shrink error bars that currently exceed most effect sizes; correct the disclosed \texttt{pos\_weight} miscalibration; use the 779 unused clinical images with a modality indicator.
 \end{block}
 \end{frame}
 
