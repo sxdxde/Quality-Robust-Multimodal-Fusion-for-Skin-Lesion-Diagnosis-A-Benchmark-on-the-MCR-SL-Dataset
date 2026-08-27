@@ -722,8 +722,12 @@ DiffMIC, PAD-UFES-20 (2025) & binary & 2298 images & 0.836 \\
 \begin{block}{What we set out to test}
 Does \texttt{hard\_mining} transfer to a \textbf{second medical imaging domain} with a differently-structured quality annotation? \textbf{DeepDRiD} (diabetic retinopathy, ISBI 2020) ships per-image quality annotations alongside DR severity grades --- the closest analogue to MCR-SL's ratings outside dermatology.
 \end{block}
-\begin{block}{Status: \alert{gate not passed --- no results, and none estimated}}
-A deliberate go/no-go gate ran \textbf{before} any training code was written. It did not pass in its time box: sustained throughput to the data host measured \textbf{26--64 KB/s} single-stream; required tooling (\texttt{git-lfs}) unavailable, and the archive endpoint ignores HTTP range requests, so the transfer cannot be parallelised.
+\begin{block}{Status: \alert{gate failed --- no results, and none estimated}}
+A deliberate go/no-go gate ran \textbf{before} any training code was written, and it \textbf{failed}:
+\begin{itemize}
+\item The transfer was attempted and \textbf{aborted after 50 minutes} --- \texttt{RPC failed (result=92)}, \texttt{early EOF}, \texttt{index-pack failed}. All 2{,}916 objects compressed server-side; the connection could not sustain a single stream long enough to deliver the pack.
+\item Measured throughput \textbf{40--64 KB/s} single-stream. Parallelism reaches ${\sim}700$ KB/s, but \texttt{git} is single-stream and the archive endpoint \textbf{ignores HTTP range requests}, so neither path can be parallelised. \texttt{git-lfs} is also unavailable.
+\end{itemize}
 \end{block}
 \centering
 \normalsize\textbf{No DeepDRiD number is reported, estimated, or implied anywhere in this deck.}\\

@@ -1125,6 +1125,30 @@ positives that controls dissolve.
   (~5.65x image samples per lesion). No data-utilization gap existed. See "Image-level training
   verification" above. Best config after that session's free eval-time variants:
   **`hard_mining` + TTA + multi-image, 0.840 balanced accuracy / 0.918 AUROC.**
+- **Cross-dataset check on DeepDRiD — attempted, gate failed, not completed (2026-08-27).**
+  Scoped as a small secondary section: does `hard_mining` transfer to a second medical imaging
+  domain (diabetic retinopathy, ISBI 2020) whose quality annotation is structured differently?
+  A go/no-go gate was run **before** writing any adapter or training code, and it failed inside
+  its 2-hour box:
+  - `git clone` of `deepdrdoc/DeepDRiD` **aborted after 50 minutes** — `RPC failed
+    (result=92, HTTP 200)`, `early EOF`, `index-pack failed`. The server compressed all 2,916
+    objects successfully; the connection could not hold a single stream long enough to deliver
+    the pack. An earlier attempt died the same way after ~97 MB.
+  - Measured remote throughput: **40–64 KB/s single-stream** (GitHub *and* kernel.org, so it is
+    a general network constraint, not GitHub-specific). 16 parallel streams reach ~700 KB/s,
+    but neither available path can exploit that: `git` transfers are single-stream, and the
+    GitHub archive endpoint **ignores HTTP Range requests** (verified — it streams the whole
+    archive instead of honouring the header), so the tarball cannot be chunked either.
+  - `git-lfs` is not installed on the remote, and the GitHub API is rate-limited from the
+    shared campus IP, so the repository size could not be confirmed cheaply either.
+
+  **No DeepDRiD number is reported, estimated, or implied anywhere** — in the paper, the slides,
+  or the ledger (verified: 0 matching rows). This is the designed outcome of a gate, recorded as
+  such. It remains the most concrete cross-domain future-work item; a machine with ordinary
+  throughput, or a mirror of the regular-fundus subset, would clear it. Scripts are committed
+  and ready (`scripts/download_deepdrid.sh`, `scripts/inspect_deepdrid.py`) — the latter also
+  checks whether DeepDRiD's shipped train/validation split is patient-disjoint, which matters
+  because this project's whole protocol rests on subject-disjoint splitting.
 - **Clinical images (779) remain the only genuinely untapped data** — a different visual domain
   from dermoscopy, so using them would need an explicit modality indicator to avoid confusing
   the encoder. Deliberately out of scope this sprint; the single most concrete future-work item.
