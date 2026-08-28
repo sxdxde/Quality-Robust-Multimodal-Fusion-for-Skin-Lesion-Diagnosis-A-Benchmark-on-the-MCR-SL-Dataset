@@ -188,6 +188,9 @@ def main():
     ap.add_argument("--oof-csv", type=Path,
                     default=Path("results/oof_predictions_channel_gated_qweight_hard_mining.csv"))
     ap.add_argument("--per-category", type=int, default=2)
+    ap.add_argument("--only", nargs="*", default=None,
+                    help="keep only categories whose name contains one of these substrings, "
+                         "e.g. --only 'low-quality, WRONG' 'high-quality' (order preserved)")
     ap.add_argument("--single-column", action="store_true",
                     help="render a 3.5in-wide IEEE single-column figure (one sample per row: "
                          "original | Grad-CAM); implies --per-category 1 unless overridden")
@@ -243,6 +246,11 @@ def main():
     print(f"candidate pool: {len(df)} lesions with prediction, rating and image")
 
     sel = select_samples(df, args.per_category)
+    if args.only:
+        keep = sel["category"].apply(lambda c: any(k.lower() in c.lower() for k in args.only))
+        sel = sel[keep].reset_index(drop=True)
+        if sel.empty:
+            raise SystemExit(f"--only {args.only} matched no categories")
     print(f"\nselected {len(sel)} samples:")
     for _, r in sel.iterrows():
         print(f"  [{r['category']:<24}] {r['lesion_id']}  rating={r['mean_image_rating']:.1f} "
