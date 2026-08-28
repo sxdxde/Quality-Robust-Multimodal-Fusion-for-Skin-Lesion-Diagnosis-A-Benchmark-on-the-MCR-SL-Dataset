@@ -188,6 +188,9 @@ def main():
     ap.add_argument("--oof-csv", type=Path,
                     default=Path("results/oof_predictions_channel_gated_qweight_hard_mining.csv"))
     ap.add_argument("--per-category", type=int, default=2)
+    ap.add_argument("--lesions", nargs="*", default=None,
+                    help="explicit lesion_ids to show, in this order, bypassing category selection "
+                         "(e.g. cases the loss reweighting flipped from wrong to right)")
     ap.add_argument("--only", nargs="*", default=None,
                     help="keep only categories whose name contains one of these substrings, "
                          "e.g. --only 'low-quality, WRONG' 'high-quality' (order preserved)")
@@ -245,7 +248,16 @@ def main():
     df = df.dropna(subset=["path"])
     print(f"candidate pool: {len(df)} lesions with prediction, rating and image")
 
-    sel = select_samples(df, args.per_category)
+    if args.lesions:
+        idx = {l: i for i, l in enumerate(args.lesions)}
+        sel = df[df["lesion_id"].isin(idx)].copy()
+        missing = set(args.lesions) - set(sel["lesion_id"])
+        if missing:
+            raise SystemExit(f"lesion(s) not in the evaluable set: {sorted(missing)}")
+        sel["category"] = "selected"
+        sel = sel.sort_values("lesion_id", key=lambda c: c.map(idx)).reset_index(drop=True)
+    else:
+        sel = select_samples(df, args.per_category)
     if args.only:
         keep = sel["category"].apply(lambda c: any(k.lower() in c.lower() for k in args.only))
         sel = sel[keep].reset_index(drop=True)
@@ -260,7 +272,7 @@ def main():
     # ---- CAMs -----------------------------------------------------------
     models_to_run = [(HARD_MINING_TAG, "hard_mining")]
     if args.compare_baseline:
-        models_to_run.append((BASELINE_TAG, "baseline"))
+        models_to_run = [(BASELINE_TAG, "baseline"), (HARD_MINING_TAG, "hard_mining")]
 
     cams = {tag: [] for tag, _ in models_to_run}
     displays, cache = [], {}
@@ -292,6 +304,36 @@ def main():
     # panels per row is illegible, so this layout is one SAMPLE per row:
     # [original | Grad-CAM]. Panels carry only a letter and a short tag; the
     # full per-sample detail belongs in the LaTeX caption and the CSV table.
+    if args.single_column and args.compare_baseline:
+        n = len(sel)
+        fig, axs = plt.subplots(n, 3, figsize=(3.5, 1.30 * n), squeeze=False)
+        for ax in axs.ravel():
+            ax.axis("off")
+        for i, (_, r) in enumerate(sel.iterrows()):
+            axs[i][0].imshow(displays[i])
+            axs[i][0].set_title(
+                f"({chr(97+i)}) {r['unified_diagnosis']} · q{r['mean_image_rating']:.1f}",
+                fontsize=5.6, pad=2)
+            for k, (tag, label) in enumerate(models_to_run, start=1):
+                cam, prob = cams[tag][i]
+                cam_up = np.array(Image.fromarray((cam * 255).astype(np.uint8))
+                                  .resize((args.image_size, args.image_size), Image.BILINEAR)) / 255.0
+                axs[i][k].imshow(displays[i])
+                axs[i][k].imshow(cam_up, cmap="jet", alpha=0.45)
+                ok = (prob >= 0.5) == (r["binary_label"] == 1)
+                axs[i][k].set_title(f"{label}  P={prob:.2f}\n{'correct' if ok else 'MISSED'}",
+                                    fontsize=5.6, pad=2,
+                                    color="darkgreen" if ok else "firebrick")
+        fig.tight_layout(pad=0.25)
+        fig.subplots_adjust(hspace=0.42)
+        out_fig = args.results_dir / "hard_samples_gradcam_compare_1col.pdf"
+        fig.savefig(out_fig, dpi=600, bbox_inches="tight")
+        fig.savefig(out_fig.with_suffix(".png"), dpi=600, bbox_inches="tight")
+        plt.close(fig)
+        print(f"\nwrote {out_fig} (+ .png)")
+        print(f"wrote {_write_table(sel, args.results_dir)}")
+        return
+
     if args.single_column:
         n = len(sel)
         fig, axs = plt.subplots(n, 2, figsize=(3.5, 1.72 * n), squeeze=False)
