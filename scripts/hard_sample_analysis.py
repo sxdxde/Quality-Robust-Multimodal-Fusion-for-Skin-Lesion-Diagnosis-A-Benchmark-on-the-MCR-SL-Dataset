@@ -171,6 +171,8 @@ def main():
     ap.add_argument("--oof-csv", type=Path,
                     default=Path("results/oof_predictions_channel_gated_qweight_hard_mining.csv"))
     ap.add_argument("--per-category", type=int, default=2)
+    ap.add_argument("--cols", type=int, default=4,
+                    help="samples per figure block; wraps so the aspect ratio suits a paper column")
     ap.add_argument("--image-size", type=int, default=224)
     ap.add_argument("--n-folds", type=int, default=5)
     ap.add_argument("--seed", type=int, default=42)
@@ -225,7 +227,7 @@ def main():
               f"pred={'MAL' if r['pred_label'] == 1 else 'ben'} p={r['pred_prob']:.3f}")
 
     # ---- CAMs -----------------------------------------------------------
-    models_to_run = [(HARD_MINING_TAG, "hard\\_mining")]
+    models_to_run = [(HARD_MINING_TAG, "hard_mining")]
     if args.compare_baseline:
         models_to_run.append((BASELINE_TAG, "baseline"))
 
@@ -255,36 +257,44 @@ def main():
             cams[tag].append((cam, prob))
 
     # ---- Figure ---------------------------------------------------------
+    # Wrapped into chunks of `--cols` so the aspect ratio suits a paper column;
+    # a single 8-wide strip is unreadable once scaled to page width.
     n = len(sel)
-    n_rows = 1 + len(models_to_run)
-    fig, axs = plt.subplots(n_rows, n, figsize=(2.85 * n, 3.1 * n_rows), squeeze=False)
+    cols = min(args.cols, n)
+    block = 1 + len(models_to_run)          # image row + one CAM row per model
+    n_chunks = int(np.ceil(n / cols))
+    fig, axs = plt.subplots(n_chunks * block, cols,
+                            figsize=(3.0 * cols, 3.25 * n_chunks * block), squeeze=False)
+    for ax in axs.ravel():
+        ax.axis("off")
 
     for j, (_, r) in enumerate(sel.iterrows()):
+        chunk, col = divmod(j, cols)
+        base = chunk * block
         gt = "MALIGNANT" if r["binary_label"] == 1 else "benign"
         pr = "MALIGNANT" if r["pred_label"] == 1 else "benign"
         mark = "OK" if r["correct"] else "WRONG"
         colour = "darkgreen" if r["correct"] else "firebrick"
 
-        axs[0][j].imshow(displays[j])
-        axs[0][j].set_title(
-            f"{r['category']}\n{r['lesion_id']} · quality {r['mean_image_rating']:.1f}/10 ({r['tercile']})\n"
+        axs[base][col].imshow(displays[j])
+        axs[base][col].set_title(
+            f"{r['category']}\n{r['lesion_id']} · {r['unified_diagnosis']} · "
+            f"quality {r['mean_image_rating']:.1f}/10 ({r['tercile']})\n"
             f"true {gt} → pred {pr}  [{mark}]\nP(malignant)={r['pred_prob']:.3f}",
-            fontsize=7, color=colour)
-        axs[0][j].axis("off")
+            fontsize=7.5, color=colour)
 
         for i, (tag, label) in enumerate(models_to_run, start=1):
-            cam, prob = cams[tag][j]
+            cam, _ = cams[tag][j]
             cam_up = np.array(Image.fromarray((cam * 255).astype(np.uint8))
                               .resize((args.image_size, args.image_size), Image.BILINEAR)) / 255.0
-            axs[i][j].imshow(displays[j])
-            axs[i][j].imshow(cam_up, cmap="jet", alpha=0.45)
-            axs[i][j].set_title(f"Grad-CAM ({label})", fontsize=7)
-            axs[i][j].axis("off")
+            axs[base + i][col].imshow(displays[j])
+            axs[base + i][col].imshow(cam_up, cmap="jet", alpha=0.45)
+            axs[base + i][col].set_title(f"Grad-CAM ({label})", fontsize=7.5)
 
-    fig.suptitle("Hard-sample analysis: channel-gated + hard\\_mining, Grad-CAM on the "
+    fig.suptitle("Hard-sample analysis: channel-gated + hard_mining — Grad-CAM on the "
                  "post-gate feature map\n(out-of-fold predictions; each lesion scored by the "
-                 "fold in which it was held out)", fontsize=10)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+                 "fold in which it was held out)", fontsize=11)
+    fig.tight_layout(rect=[0, 0, 1, 0.965])
     out_fig = args.results_dir / ("hard_samples_gradcam_compare.png" if args.compare_baseline
                                   else "hard_samples_gradcam.png")
     fig.savefig(out_fig, dpi=160)
