@@ -212,7 +212,7 @@ This mechanism is distinct from the auxiliary quality-regression head described 
 
 \subsection{Dataset}
 \label{sec:dataset}
-MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 16 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded from the binary task, leaving 234 usable. Twenty-one lesion identifiers in the image index have no lesion-table row and no file on disk, and are dropped via an inner join. Section~\ref{sec:robustness} traces the further reduction to the 231 lesions used in the analyses.
+MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 16 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded, leaving 234 usable; Section~\ref{sec:robustness} traces the further reduction to the 231 used in the analyses.
 
 \subsection{Evaluation Metrics}
 We have reported accuracy, balanced accuracy, macro-averaged F1, sensitivity on the malignant class, specificity, and area under the receiver operating characteristic curve, AUROC, at every shot of evaluation, aggregated across the five test folds as mean and standard deviation. Balanced accuracy has been used for checkpoint selection and as the primary comparison metric, since the malignant class has represented a minority of usable lesions.
@@ -321,14 +321,16 @@ The validated \emph{hard\_mining} configuration has not flattened this profile: 
 
 \subsection{Qualitative Analysis: Hard Samples}
 \label{sec:qualitative}
-Grad-CAM has been applied to lesions selected by a systematic rule rather than by inspection, one from each of four categories, preferring malignant lesions; Fig.~\ref{fig:hardsamples} contrasts a correct and an incorrect hard case. Gradients are taken with respect to the feature map \emph{after} the metadata gate, since that is the representation the decision is computed from, with the metadata branch held fixed so attribution reflects image evidence only.
+Gradients have been taken with respect to the feature map \emph{after} the metadata gate, the representation the decision is computed from, with the metadata branch held fixed. Fig.~\ref{fig:hardsamples} compares the baseline and reweighted models on the two lowest-quality malignant lesions the loss has flipped from a miss to a correct call.
 
-The pair inverts the expected relationship with quality. Panel (a) is a basal cell carcinoma rated 4.3, washed out and hair-obscured, yet attention has localized the lesion and the malignant call has been made at $P=1.00$. Panel (b) is a melanoma rated 8.3 on a clean image, where attention has also localized the lesion correctly and the prediction has still been benign at $P=0.20$. Attention is correct in both, so the failure in (b) is one of decision, not of attention, and is not attributable to image quality. This is the null of Section~\ref{sec:robustness} in visual form; the residual difficulty in (b) is more plausibly melanoma's scarcity, the rarest malignant class here, than any property of the photograph.
+In (a), a basal cell carcinoma rated 5.7, the baseline has assigned $P=0.02$, a confident miss, with attention spread diffusely; under reweighting attention contracts onto a single focus and the call becomes $P=0.89$. In (b), a melanoma rated 4.3, baseline attention falls on the left edge away from the pigmented region and the lesion is missed at $P=0.27$; under reweighting attention moves onto the lesion and the call becomes $P=0.89$. Both lie in the lowest quality tercile, where reweighting assigns its largest weights.
+
+These are illustrative rather than representative: across the 231 lesions the reweighting has changed 13 predictions from incorrect to correct and 14 the other way, but among malignant lesions it has fixed six and broken two, and that net gain of four is what a $+0.092$ sensitivity amounts to at this scale.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.84\linewidth]{figures/hard_samples_gradcam_1col.pdf}
-\caption{Grad-CAM on the post-gate feature map. $P$ is $P(\mathrm{malignant})$, $q$ the expert quality rating. (a) basal cell carcinoma correctly identified despite a low-quality, hair-obscured image; (b) melanoma missed on a high-quality image with attention correctly localized. Maps are $7\times7$ upsampled, indicating approximate attention only.}
+\includegraphics[width=\linewidth]{figures/hard_samples_gradcam_compare_1col.pdf}
+\caption{Grad-CAM on the post-gate feature map for the two lowest-quality malignant lesions that quality-adaptive reweighting has flipped from a miss to a correct call. $q$ is the expert quality rating, $P$ is $P(\mathrm{malignant})$. In (a) diffuse baseline attention contracts to a single focus; in (b) baseline attention lies off the lesion and moves onto it. Maps are $7\times7$ upsampled, indicating approximate attention only.}
 \label{fig:hardsamples}
 \end{figure}
 
