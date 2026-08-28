@@ -760,32 +760,34 @@ DiffMIC, PAD-UFES-20 (2025) & binary & 2298 images & 0.836 \\
 The two numbers on the previous slide count \textbf{different things}. Ours is a \emph{lesion} count; theirs is an \emph{image} count.
 \vspace{0.2cm}
 \centering
-\small
+\scriptsize
 \begin{tabular}{|l|c|c|c|}
 \hline
 \textbf{Quantity} & \textbf{MCR-SL (ours)} & \textbf{PAD-UFES-20} & \textbf{Ratio} \\
 \hline
 Images available & 2{,}131 & 2{,}298 & 1.1$\times$ \\
 \rowcolor{green!12}\textbf{Images used to train} & \textbf{1{,}352} (dermoscopic) & \textbf{2{,}298} & \textbf{1.7$\times$} \\
-\rowcolor{yellow!15}\textbf{Lesions} & \textbf{234} usable & \textbf{$\sim$1{,}641} & \textbf{7.0$\times$} \\
+\rowcolor{yellow!15}\textbf{Lesions} & \textbf{234} usable & \textbf{1{,}641} & \textbf{7.0$\times$} \\
+Images per lesion & 5.6 & 1.4 & --- \\
 Subjects / patients & 60 & $\sim$1{,}373\rlap{*} & $\sim$23$\times$ \\
 \hline
-Evaluation unit & \textbf{per lesion} & \textbf{per image} & --- \\
+Evaluation unit & \textbf{per lesion} (231) & \textbf{per image} (2{,}298) & --- \\
 \hline
-Malignant & 42 lesions (18\%) & \rlap{*}\phantom{xx} & --- \\
-Non-malignant & 192 lesions (82\%) & \rlap{*}\phantom{xx} & --- \\
+Malignant & 42 lesions & 1{,}089 img (BCC 845, SCC 192, MEL 52) & --- \\
+Non-malignant & 192 lesions & 1{,}204 img (ACK 730, NEV 244, SEK 230) & --- \\
+\rowcolor{orange!18}\textbf{\% malignant} & \textbf{17.9\%} & \textbf{47.5\%} & \textbf{2.7$\times$} \\
 \hline
 \end{tabular}
-\vspace{0.25cm}
+\vspace{0.2cm}
 
 \raggedright
-\small
+\scriptsize
 \begin{itemize}
-\item We train on \textbf{1{,}352 images}, not 234 --- every dermoscopic image of a training lesion is a separate sample ($\sim$5.7 per lesion). \alert{``10$\times$ less data'' overstated our disadvantage; removed.}
-\item \textbf{The defensible statement is $7\times$ fewer lesions}, with \emph{comparable} image counts. Our 60 subjects vs.\ ${\sim}1{,}373$ patients is the largest real gap.
-\item Our 18\% malignant rate is \textbf{heavily skewed} --- exactly why we report \emph{balanced} accuracy.
+\item We train on \textbf{1{,}352 images}, not 234 --- every dermoscopic image is a separate sample. \alert{``10$\times$ less data'' overstated our disadvantage; removed.}
+\item \alert{\textbf{The class balance differs far more than the size does.}} Their task is near-balanced (47.5\% malignant, \textbf{1{,}089} malignant images); ours is heavily skewed (\textbf{17.9\%}, only \textbf{42} malignant lesions, ${\sim}8$--9 per test fold). Balanced accuracy is a \emph{much} harder target at 18\% than at 47\%.
+\item They also evaluate \textbf{per image} where we evaluate \textbf{per lesion} --- ours is the stricter unit, since near-duplicate views of one lesion earn no repeated credit.
 \end{itemize}
-{\footnotesize \rlap{*}\phantom{x} PAD-UFES-20 patient count and cancer/non-cancer split not independently re-verified --- confirm against Pacheco et al.\ (2020) before submission.}
+{\footnotesize \rlap{*}\phantom{x} Class counts sum to 2{,}293, not the 2{,}298 usually quoted (SEK$=$235 would reconcile it); patient count not re-verified. \textbf{Confirm both against Pacheco et al.\ (2020) before submission.}}
 \end{frame}
 
 % ---------------------------------------------------------------

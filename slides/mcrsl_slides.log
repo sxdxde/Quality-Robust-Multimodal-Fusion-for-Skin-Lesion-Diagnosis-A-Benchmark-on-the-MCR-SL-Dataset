@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  28 AUG 2026 09:28
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  28 AUG 2026 09:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1183,10 +1183,10 @@ Package rerunfilecheck Info: File `mcrsl_slides.out' has not changed.
 (rerunfilecheck)             Checksum: 528FF0F43630FFCE2F2CC32767427FC1;1280.
  ) 
 Here is how much of TeX's memory you used:
- 26315 strings out of 469006
- 530685 string characters out of 5454814
+ 26316 strings out of 469006
+ 530701 string characters out of 5454814
  920344 words of memory out of 5000000
- 54413 multiletter control sequences out of 15000+600000
+ 54414 multiletter control sequences out of 15000+600000
  643112 words of font info for 98 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
  101i,14n,107p,404b,796s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -1218,7 +1218,7 @@ tt12.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmtt8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfont
 s/cm/cmtt9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsf
 onts/symbols/msam10.pfb>
-Output written on mcrsl_slides.pdf (38 pages, 2386887 bytes).
+Output written on mcrsl_slides.pdf (38 pages, 2386815 bytes).
 PDF statistics:
  683 PDF objects out of 1000 (max. 8388607)
  446 compressed objects within 5 object streams

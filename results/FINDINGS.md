@@ -391,22 +391,39 @@ sample, ~5.7 per lesion — see "Image-level training verification").
 |---|---|---|---|
 | images available | 2,131 | 2,298 | 1.1x |
 | **images used for training** | **1,352** (dermoscopic) | **2,298** | **1.7x** |
-| **lesions** | **234** usable | **~1,641** | **7.0x** |
+| **lesions** | **234** usable | **1,641** | **7.0x** |
+| images per lesion | 5.6 | 1.4 | — |
 | subjects / patients | 60 | ~1,373 * | ~23x |
-| evaluation unit | **per lesion** | **per image** | — |
-| malignant | 42 lesions (18%) | * | — |
-| non-malignant | 192 lesions (82%) | * | — |
+| evaluation unit | **per lesion** (231) | **per image** (2,298) | — |
+| malignant | 42 lesions | 1,089 img — BCC 845, SCC 192, MEL 52 | — |
+| non-malignant | 192 lesions | 1,204 img — ACK 730, NEV 244, SEK 230 | — |
+| **% malignant** | **17.9%** | **47.5%** | **2.7x** |
 
-\* PAD-UFES-20's patient count and cancer/non-cancer split are **not independently re-verified**
-in this project — the 1,641 lesion figure comes from the earlier literature pass, but the class
-balance and patient count should be confirmed against Pacheco et al. (2020) before submission.
-Do not put them in the paper as verified numbers until that check is done.
+**The class-balance gap matters more than the size gap.** PAD-UFES-20's binary task is
+near-balanced (47.5% malignant, 1,089 malignant images). Ours is heavily skewed (17.9%, just 42
+malignant lesions, ~8–9 per test fold). Balanced accuracy is a substantially harder target at
+18% than at 47%, because the minority class carries almost all of the variance — which is
+exactly the small-N sampling floor documented in the SWA diagnostic. This is a stronger and more
+defensible framing than any data-volume ratio: *we are not merely working with less data, we are
+working with ~26x fewer positive cases on a much more skewed task.*
 
-**What to say instead of "10x less data":** *"7x fewer lesions, with comparable image counts."*
-That is defensible and still makes the point. The largest genuine gap is subjects — 60 vs.
-~1,373 patients — which matters more than either image or lesion count for generalization, and
-is the honest thing to emphasize. Note also the evaluation units differ (we report per-lesion,
-DiffMIC per-image), so even the headline metrics are not measuring quite the same quantity.
+The evaluation units also differ: they report per-image over 2,298, we report per-lesion over
+231. **Ours is the stricter unit** — near-duplicate views of one lesion earn no repeated credit,
+whereas a per-image protocol scores each of a lesion's ~1.4 photos separately.
+
+\* **Two caveats on the PAD-UFES-20 figures, both needing one check before submission:**
+1. The class counts above sum to **2,293**, not the 2,298 usually quoted — a 5-image gap.
+   `SEK=235` (rather than 230) reconciles it exactly, so one of the two figures is off by 5.
+2. The ~1,373 patient count is **not re-verified** in this project.
+
+Both were supplied second-hand rather than read from Pacheco et al. (2020) directly. The
+malignant/non-malignant totals (1,089 / 1,204) and the 47.5% share are internally consistent and
+safe to reason with; **confirm the SEK count and patient number against the primary source before
+they appear in the paper.**
+
+**What to say instead of "10x less data":** *"7x fewer lesions, with comparable image counts, on a
+task with 2.7x lower malignant prevalence."* That is defensible and makes a sharper point than a
+raw volume ratio.
 
 ## Robustness analyses (the actual novelty)
 
