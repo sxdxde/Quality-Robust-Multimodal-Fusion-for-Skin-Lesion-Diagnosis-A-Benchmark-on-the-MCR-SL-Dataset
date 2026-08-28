@@ -64,24 +64,68 @@ This lets us ask a question no earlier skin-lesion benchmark could:\\
 \section{Dataset}
 \begin{frame}{MCR-SL Dataset at a Glance}
 \centering
-\begin{tabular}{|l|l|}
+\scriptsize
+\begin{tabular}{|l|l|l|}
 \hline
-\textbf{Property} & \textbf{Value} \\
+\textbf{Property} & \textbf{Value} & \textbf{Note} \\
 \hline
-Subjects & 60 \\
-Lesions (total / usable for binary task) & 240 / 234 \\
-Malignant / non-malignant / undetermined & 42 / 192 / 6 \\
-Clinical images (usable) & 779 \\
-Dermoscopic images (usable) & 1352 \\
-Histopathology-confirmed lesions & 28 \\
-Metadata fields used (categorical / numeric) & 16 / 4 \\
-Lesions with full expert quality coverage & 238 \\
-Unified diagnosis classes & 9 \\
+Subjects & 60 & 59 have $\ge$1 binary-usable lesion \\
+Lesions (total) & 240 & \\
+\quad malignant / non-malignant / unknown & 42 / 192 / 6 & 18\% malignant --- heavily skewed \\
+\quad usable for binary task & \textbf{234} & 240 $-$ 6 \texttt{malignancy=="unknown"} \\
+\hline
+Images (raw rows in \texttt{image.xlsx}) & 2394 & \\
+\quad after lesion join + file check & \textbf{2131} & 263 orphans dropped (21 lesion\_ids) \\
+\quad \textbf{dermoscopic} (used for training) & \textbf{1352} & mean 5.73/lesion, range 1--18 \\
+\quad clinical & 779 & \alert{not used} --- different visual domain \\
+\hline
+Expert quality ratings & 1--10 scale & \textbf{the field no other dataset has} \\
+\quad lesions with a rating & 238 / 240 & 3 experts (E001/E003/E004) \\
+\quad E002's ratings & \alert{entirely lost} & 0/241 --- technical error, documented \\
+Expert diagnostic certainty & 0/25/50/75/100 & all \textbf{4} experts intact (241/241) \\
+\hline
+Histopathology-confirmed & 28 / 240 & rest are expert-panel consensus \\
+Metadata fields used (categ.\ / numeric) & 16 / 4 & missingness encoded, never imputed \\
+Unified diagnosis classes & 9 & MEL=8, SCC=4, ANG=4, DF=2 (small-$N$) \\
 \hline
 \end{tabular}
-\vspace{0.3cm}
+\vspace{0.25cm}
 
-{\footnotesize ``Usable'' = has a lesion record match and an existing image file on disk.}
+\raggedright
+{\footnotesize ``Usable'' = has a lesion-record match and an existing image file on disk. Training is
+\textbf{image-level} (every dermoscopic image is a separate sample, ${\sim}5.7$ per lesion);
+evaluation is \textbf{per-lesion} (one prediction each, from the \texttt{diagnosis\_image\_id} image).}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Why the Analysis Tables Say $N=231$, Not 234}
+A fair question: the quality terciles are $85 + 93 + 53 = \mathbf{231}$, but the binary task has \textbf{234} usable lesions. Where did 3 go?
+\vspace{0.3cm}
+\centering
+\small
+\begin{tabular}{|r|l|l|}
+\hline
+\textbf{Count} & \textbf{Step} & \textbf{Why} \\
+\hline
+240 & All lesions in MCR-SL & \\
+\rowcolor{red!8}$-4$ & no usable diagnosis image on disk & cannot produce a prediction at all \\
+236 & lesions with an out-of-fold prediction & \\
+\rowcolor{red!8}$-5$ & \texttt{malignancy == "unknown"} & no valid binary label to score against \\
+\hline
+\rowcolor{green!12}\textbf{231} & \textbf{prediction \emph{and} binary label} & $= 85 + 93 + 53$ \checkmark \\
+\hline
+\end{tabular}
+\vspace{0.35cm}
+
+\raggedright
+\normalsize
+\begin{itemize}
+\item \textbf{234} is a \emph{labelling} count: $240 - 6$ lesions whose malignancy is ``unknown''.
+\item \textbf{231} is an \emph{evaluable} count: lesions that have both a prediction and a label.
+\item The difference of \textbf{3} is binary-usable lesions whose diagnosis image is missing from disk --- they are droppable at load time, logged, never silently filled in.
+\end{itemize}
+\vspace{0.15cm}
+{\footnotesize Two of the missing-image lesions (L0013, L0205) also have no diagnosis-image row at all, so they carry no quality rating either. \textbf{No lesion is ever excluded on the basis of its prediction} --- only on missing input data or a missing label.}
 \end{frame}
 
 \begin{frame}{Task Definition}

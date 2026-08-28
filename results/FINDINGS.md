@@ -113,6 +113,33 @@ explains part of the fold-to-fold variance documented throughout: fold 0's test 
 subjects' worth of lesions. Train-set sizes vary correspondingly (102–190 lesions, 621–1042
 image samples). Each lesion appears in exactly 3 of the 5 training sets (720 = 240 × 3 ✓).
 
+### Why the analyses report N=231, not 234 (asked 2026-08-28 — answer it in the paper too)
+
+The quality terciles sum to 85 + 93 + 53 = **231**, but the binary task has **234** usable
+lesions. These are two different counts, and both are correct:
+
+| count | step | why |
+|---|---|---|
+| 240 | all lesions in MCR-SL | |
+| −4 | no usable diagnosis image on disk | no prediction can be produced at all |
+| 236 | lesions with an out-of-fold prediction | verified: `oof_predictions_channel_gated_qualityFalse.csv` has 236 rows |
+| −5 | `malignancy == "unknown"` | no valid binary label to score against (L0057, L0059, L0076, L0190, L0213) |
+| **231** | **prediction AND binary label** | = 85 + 93 + 53 ✓ |
+
+- **234** is a *labelling* count: 240 − 6 unknown-malignancy lesions. It describes how many
+  lesions could in principle be scored.
+- **231** is an *evaluable* count: how many actually have both a prediction and a label.
+- The difference of **3** is binary-usable lesions whose diagnosis image is missing from disk.
+  (The 6th unknown-malignancy lesion is also among the 4 with no image, which is why 240−4−5=231
+  rather than 240−4−6.)
+- Two of the missing-image lesions (L0013, L0205) additionally have no diagnosis-image row at
+  all, so they carry no quality rating either — consistent with the "238/240 have a rating" note
+  in the caveats below.
+
+**Nothing is excluded on the basis of its prediction** — only on missing input data or a missing
+label, both decided before any model runs. Worth stating explicitly in the paper, since a
+reader who adds the tercile Ns will notice the discrepancy and should not have to guess.
+
 ### Statistical conventions used throughout this document
 - **All mean ± std across folds use population std (`ddof=0`)**, matching
   `evaluate.py:aggregate_fold_metrics`. Pandas' `.std()` default (`ddof=1`) would be ~11.8%
