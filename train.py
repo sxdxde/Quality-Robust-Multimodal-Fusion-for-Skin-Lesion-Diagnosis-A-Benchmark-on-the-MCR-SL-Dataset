@@ -312,7 +312,8 @@ def run_cv(cfg: TrainConfig, lesion_df, image_index_df, images_root: Path, devic
 
         train_lesion_df = lesion_df
         if cfg.quality_shuffle_control:
-            train_lesion_df = build_shuffled_quality_df(lesion_df, train_subjects, seed=test_fold)
+            train_lesion_df = build_shuffled_quality_df(
+                lesion_df, train_subjects, seed=cfg.quality_shuffle_seed * 1000 + test_fold)
 
         train_ds = MCRSLDataset(train_lesion_df, image_index_df, train_subjects, numeric_stats, cfg.image_size, "train",
                                  cfg.train_on_all_dermoscopic_images, use_preprocessing=cfg.use_dermoscopy_preprocessing)
@@ -415,6 +416,9 @@ def main():
     parser.add_argument("--lr", type=float, default=None)
     parser.add_argument("--focal-gamma", type=float, default=None)
     parser.add_argument("--quality-weight-mode", default=None, choices=["none", "trust", "hard_mining"])
+    parser.add_argument("--shuffle-seed", type=int, default=None,
+                         help="which permutation to draw (0 reproduces the original single control); "
+                              "1..N give independent permutations for a permutation test")
     parser.add_argument("--shuffle-quality-control", action="store_true",
                          help="shuffled-quality control: permute mean_image_rating across each fold's "
                               "training lesions (fixed seed=test_fold) before computing w_quality, "
@@ -449,6 +453,8 @@ def main():
         cfg.quality_weight_mode = args.quality_weight_mode
     if args.shuffle_quality_control:
         cfg.quality_shuffle_control = True
+    if args.shuffle_seed is not None:
+        cfg.quality_shuffle_seed = args.shuffle_seed
     if args.grad_clip_norm is not None:
         cfg.grad_clip_norm = args.grad_clip_norm
     if args.use_ldam_margin:

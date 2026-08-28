@@ -44,6 +44,11 @@ class TrainConfig:
     # unshuffled ratings — this only ever touches the train split's weights.
     # No effect when quality_weight_mode == "none".
     quality_shuffle_control: bool = False
+    # Which permutation to draw when quality_shuffle_control is on. The per-fold
+    # RNG seed is shuffle_seed*1000 + test_fold, so shuffle_seed=0 reproduces the
+    # original single-permutation control exactly (seed == test_fold), and
+    # 1..N give independent permutations for a proper permutation test.
+    quality_shuffle_seed: int = 0
 
     # Diagnosed from channel_gated_qweight_{trust,hard_mining}'s training logs:
     # val_bacc oscillates wildly epoch-to-epoch (checkpoint selection is
