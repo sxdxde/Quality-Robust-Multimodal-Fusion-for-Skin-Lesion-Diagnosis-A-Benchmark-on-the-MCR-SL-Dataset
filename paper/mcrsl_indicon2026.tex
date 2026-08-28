@@ -321,14 +321,14 @@ The validated \emph{hard\_mining} configuration has not flattened this profile: 
 
 \subsection{Qualitative Analysis: Hard Samples}
 \label{sec:qualitative}
-Grad-CAM has been applied to lesions selected by a systematic rule rather than by inspection, one from each of four categories, preferring malignant lesions; Fig.~\ref{fig:hardsamples} shows the two misclassified cases. Gradients are taken with respect to the feature map \emph{after} the metadata gate, since that is the representation the decision is computed from, with the metadata branch held fixed so attribution reflects image evidence only.
+Grad-CAM has been applied to lesions selected by a systematic rule rather than by inspection, one from each of four categories, preferring malignant lesions; Fig.~\ref{fig:hardsamples} contrasts a correct and an incorrect hard case. Gradients are taken with respect to the feature map \emph{after} the metadata gate, since that is the representation the decision is computed from, with the metadata branch held fixed so attribution reflects image evidence only.
 
-The two misclassified melanomas illustrate distinct failure modes. In panel (a), a low-quality image, attention has fallen on a small peripheral region rather than the large diffuse lesion, and the model has been confidently wrong. In panel (b), a high-quality image rated 8.3, attention has localized the lesion correctly and the prediction has still been benign. The first is a failure of attention and the second a failure of decision, and they imply different remedies; the second in particular indicates that image quality is not the operative limitation for every error, consistent with the null result reported above.
+The pair inverts the expected relationship with quality. Panel (a) is a basal cell carcinoma rated 4.3, washed out and hair-obscured, yet attention has localized the lesion and the malignant call has been made at $P=1.00$. Panel (b) is a melanoma rated 8.3 on a clean image, where attention has also localized the lesion correctly and the prediction has still been benign at $P=0.20$. Attention is correct in both, so the failure in (b) is one of decision, not of attention, and is not attributable to image quality. This is the null of Section~\ref{sec:robustness} in visual form; the residual difficulty in (b) is more plausibly melanoma's scarcity, the rarest malignant class here, than any property of the photograph.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.92\linewidth]{figures/hard_samples_gradcam_1col.pdf}
-\caption{Grad-CAM on the post-gate feature map. $P$ is $P(\mathrm{malignant})$, $q$ the expert quality rating. (a) missed melanoma, low quality, attention off the lesion; (b) missed melanoma, high quality, attention correct. Maps are $7\times7$ upsampled, indicating approximate attention only.}
+\includegraphics[width=0.84\linewidth]{figures/hard_samples_gradcam_1col.pdf}
+\caption{Grad-CAM on the post-gate feature map. $P$ is $P(\mathrm{malignant})$, $q$ the expert quality rating. (a) basal cell carcinoma correctly identified despite a low-quality, hair-obscured image; (b) melanoma missed on a high-quality image with attention correctly localized. Maps are $7\times7$ upsampled, indicating approximate attention only.}
 \label{fig:hardsamples}
 \end{figure}
 
