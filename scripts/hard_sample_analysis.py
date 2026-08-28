@@ -162,6 +162,23 @@ def select_samples(df, per_category=2):
     return pd.DataFrame(picked)
 
 
+def _write_table(sel, results_dir):
+    """Per-sample detail as CSV — the companion to the figure, and the place
+    the full numbers live when the figure itself only carries panel letters."""
+    cols = ["category", "lesion_id", "unified_diagnosis", "mean_image_rating", "tercile",
+            "binary_label", "pred_label", "pred_prob", "correct", "fold", "histo_confirmed"]
+    tbl = sel[[c for c in cols if c in sel.columns]].copy()
+    tbl.insert(0, "panel", [f"({chr(97 + i)})" for i in range(len(tbl))])
+    tbl["mean_image_rating"] = tbl["mean_image_rating"].round(2)
+    tbl["pred_prob"] = tbl["pred_prob"].round(3)
+    tbl = tbl.rename(columns={"binary_label": "true_malignant", "pred_label": "pred_malignant"})
+    out_csv = results_dir / "hard_samples_table.csv"
+    tbl.to_csv(out_csv, index=False)
+    print()
+    print(tbl.to_string(index=False))
+    return out_csv
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", required=True, type=Path)
@@ -171,6 +188,9 @@ def main():
     ap.add_argument("--oof-csv", type=Path,
                     default=Path("results/oof_predictions_channel_gated_qweight_hard_mining.csv"))
     ap.add_argument("--per-category", type=int, default=2)
+    ap.add_argument("--single-column", action="store_true",
+                    help="render a 3.5in-wide IEEE single-column figure (one sample per row: "
+                         "original | Grad-CAM); implies --per-category 1 unless overridden")
     ap.add_argument("--cols", type=int, default=4,
                     help="samples per figure block; wraps so the aspect ratio suits a paper column")
     ap.add_argument("--image-size", type=int, default=224)
@@ -179,6 +199,9 @@ def main():
     ap.add_argument("--compare-baseline", action="store_true",
                     help="stretch: also render the plain-baseline CAM for each sample")
     args = ap.parse_args()
+
+    if args.single_column and args.per_category == 2:
+        args.per_category = 1   # 4 samples -> ~7in tall, fits one IEEE column
 
     images_root = args.images_root or args.data_dir
     args.results_dir.mkdir(parents=True, exist_ok=True)
@@ -256,7 +279,43 @@ def main():
             cam, prob = gradcam_post_gate(cache[key], x, cat, num, miss)
             cams[tag].append((cam, prob))
 
-    # ---- Figure ---------------------------------------------------------
+    # ---- Single-column IEEE figure --------------------------------------
+    # An IEEE two-column page gives ~3.5in of width. At that size more than two
+    # panels per row is illegible, so this layout is one SAMPLE per row:
+    # [original | Grad-CAM]. Panels carry only a letter and a short tag; the
+    # full per-sample detail belongs in the LaTeX caption and the CSV table.
+    if args.single_column:
+        n = len(sel)
+        fig, axs = plt.subplots(n, 2, figsize=(3.5, 1.72 * n), squeeze=False)
+        for ax in axs.ravel():
+            ax.axis("off")
+        for i, (_, r) in enumerate(sel.iterrows()):
+            tag = "correct" if r["correct"] else "MISSED"
+            colour = "darkgreen" if r["correct"] else "firebrick"
+            axs[i][0].imshow(displays[i])
+            axs[i][0].set_title(
+                f"({chr(97+i)}) {r['category'].replace('-quality', '-q')}\n"
+                f"{r['unified_diagnosis']} · q{r['mean_image_rating']:.1f} · "
+                f"P={r['pred_prob']:.2f} · {tag}",
+                fontsize=5.6, color=colour, pad=2)
+            cam, _ = cams[HARD_MINING_TAG][i]
+            cam_up = np.array(Image.fromarray((cam * 255).astype(np.uint8))
+                              .resize((args.image_size, args.image_size), Image.BILINEAR)) / 255.0
+            axs[i][1].imshow(displays[i])
+            axs[i][1].imshow(cam_up, cmap="jet", alpha=0.45)
+            axs[i][1].set_title("Grad-CAM", fontsize=5.6, pad=2)
+        fig.tight_layout(pad=0.25)
+        fig.subplots_adjust(hspace=0.30)
+        out_fig = args.results_dir / "hard_samples_gradcam_1col.pdf"
+        fig.savefig(out_fig, dpi=600, bbox_inches="tight")
+        fig.savefig(out_fig.with_suffix(".png"), dpi=600, bbox_inches="tight")
+        plt.close(fig)
+        print(f"\nwrote {out_fig} (+ .png), sized for a 3.5in IEEE column")
+        tbl_out = _write_table(sel, args.results_dir)
+        print(f"wrote {tbl_out}")
+        return
+
+    # ---- Multi-column figure --------------------------------------------
     # Wrapped into chunks of `--cols` so the aspect ratio suits a paper column;
     # a single 8-wide strip is unreadable once scaled to page width.
     n = len(sel)
