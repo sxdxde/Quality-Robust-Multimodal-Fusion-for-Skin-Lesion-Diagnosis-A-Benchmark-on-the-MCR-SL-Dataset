@@ -9,6 +9,8 @@
 # ~67 min per permutation (5 folds each). N=20 gives resolution to p=1/21.
 set -uo pipefail
 DATA_DIR="${1:-$HOME/mcrsl_project/data/raw/extracted/MCR-SL_dataset}"
+# use the brats env explicitly; bare `python` is the base env and lacks pandas
+PY="${PY:-$HOME/miniconda3/envs/brats/bin/python}"
 N="${2:-20}"
 cd "$(dirname "$0")/.."
 mkdir -p logs
@@ -18,7 +20,7 @@ for s in $(seq 1 "$N"); do
     echo "=== permutation $s already complete, skipping ==="; continue
   fi
   echo "=== permutation $s/$N (seed $s) ==="
-  python train.py --variant channel_gated --run-tag "$TAG" \
+  "$PY" train.py --variant channel_gated --run-tag "$TAG" \
     --quality-weight-mode hard_mining --shuffle-quality-control --shuffle-seed "$s" \
     --data-dir "$DATA_DIR" > "logs/train_${TAG}.log" 2>&1
   echo "    done: $(grep -E '^total time' logs/train_${TAG}.log | tail -1)"
