@@ -194,7 +194,18 @@ def main():
 
     oof = pd.read_csv(args.oof_csv)
     oof = oof[oof["has_binary_label"]].copy()
-    df = oof.merge(lesion_df, on="lesion_id", how="left").dropna(subset=["mean_image_rating"])
+
+    # Merge ONLY the lesion columns not already present in the OOF file.
+    # `binary_label`, `aux_label` and `histo_confirmed` exist in both, and a
+    # blanket merge silently suffixes them to _x/_y, breaking every later
+    # reference. Take the OOF copies (which are what was actually scored).
+    need = ["lesion_id", "mean_image_rating", "unified_diagnosis", "diagnosis_image_id"]
+    need += [c for c in list(CATEGORICAL_FIELDS.keys()) + NUMERICAL_FIELDS if c in lesion_df.columns]
+    need = [c for c in dict.fromkeys(need) if c in lesion_df.columns]
+    overlap = (set(need) & set(oof.columns)) - {"lesion_id"}
+    assert not overlap, f"column collision would corrupt the merge: {overlap}"
+
+    df = oof.merge(lesion_df[need], on="lesion_id", how="left").dropna(subset=["mean_image_rating"])
     # Same tercile boundaries as robustness analysis 1.
     df["tercile"] = pd.qcut(df["mean_image_rating"], 3, labels=["low", "mid", "high"])
     df["confidence"] = (df["pred_prob"] - 0.5).abs() * 2
