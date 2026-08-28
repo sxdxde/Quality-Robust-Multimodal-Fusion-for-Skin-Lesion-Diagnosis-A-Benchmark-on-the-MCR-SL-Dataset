@@ -312,8 +312,9 @@ def main():
         for i, (_, r) in enumerate(sel.iterrows()):
             axs[i][0].imshow(displays[i])
             axs[i][0].set_title(
-                f"({chr(97+i)}) {r['unified_diagnosis']} · q{r['mean_image_rating']:.1f}",
-                fontsize=5.6, pad=2)
+                f"({chr(97+i)}) Input · {r['unified_diagnosis']} · q{r['mean_image_rating']:.1f}\n"
+                f"Ground Truth: {'MALIGNANT' if r['binary_label'] == 1 else 'benign'}",
+                fontsize=5.4, pad=2)
             for k, (tag, label) in enumerate(models_to_run, start=1):
                 cam, prob = cams[tag][i]
                 cam_up = np.array(Image.fromarray((cam * 255).astype(np.uint8))
@@ -321,8 +322,8 @@ def main():
                 axs[i][k].imshow(displays[i])
                 axs[i][k].imshow(cam_up, cmap="jet", alpha=0.45)
                 ok = (prob >= 0.5) == (r["binary_label"] == 1)
-                axs[i][k].set_title(f"{label}  P={prob:.2f}\n{'correct' if ok else 'MISSED'}",
-                                    fontsize=5.6, pad=2,
+                axs[i][k].set_title(f"Prediction ({label})\nP={prob:.2f} · {'correct' if ok else 'MISSED'}",
+                                    fontsize=5.4, pad=2,
                                     color="darkgreen" if ok else "firebrick")
         fig.tight_layout(pad=0.25)
         fig.subplots_adjust(hspace=0.42)

@@ -15,53 +15,47 @@
 \citation{qgdr}
 \citation{hu2023}
 \citation{se}
-\citation{adaface,magface}
-\citation{qgdr}
-\citation{hu2023}
 \citation{efficientnet,imagenet}
 \citation{se}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-B}}Research Gap}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}Literature Review}{2}{}\protected@file@percent }
+\newlabel{sec:lit}{{II}{2}{}{section.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Proposed Methodology}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Architecture}{2}{}\protected@file@percent }
+\newlabel{sec:arch}{{\mbox  {III-A}}{2}{}{subsection.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Quality-Adaptive Loss Reweighting}{2}{}\protected@file@percent }
+\newlabel{sec:qaloss}{{\mbox  {III-B}}{2}{}{subsection.3.2}{}}
+\citation{adaface,magface}
 \citation{focal}
 \citation{supcon}
 \citation{adamw}
 \citation{sam}
-\@writefile{toc}{\contentsline {section}{\numberline {II}Literature Review}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Research Gap}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {III}Proposed Methodology}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Architecture}{2}{}\protected@file@percent }
-\newlabel{sec:arch}{{\mbox  {III-A}}{2}{}{subsection.3.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Training and Evaluation Protocol}{2}{}\protected@file@percent }
-\citation{adaface,magface}
 \citation{mcrsl}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Channel-gated fusion architecture, with tensor shapes and one real example flowing through: lesion L0189, a histopathology-confirmed basal cell carcinoma, one of the model's highest-confidence correct predictions ($\otimes $: elementwise multiplication of the metadata-derived gate with the convolutional feature map, per channel, before pooling). The late-fusion baseline shares the same final Linear+ReLU+Dropout projection, applied instead to concat(pooled image, metadata) directly.}}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Channel-gated fusion with quality-adaptive loss reweighting, drawn left to right. The image path (top) and metadata path (bottom) meet at the channel gate $\otimes $, where a metadata-derived sigmoid gate rescales the convolutional feature map channel by channel before pooling. The proposed contribution is the dashed path: each lesion's expert quality rating $q_i$ becomes a fixed scalar coefficient $w^{\mathrm  {qual}}_i$ on that sample's binary loss. It is not a learned parameter and is never differentiated; only the weighting of each sample's contribution changes.}}{3}{}\protected@file@percent }
 \newlabel{fig:arch}{{1}{3}{}{figure.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Quality-Adaptive Loss Reweighting}{3}{}\protected@file@percent }
-\newlabel{sec:qaloss}{{\mbox  {III-C}}{3}{}{subsection.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Training and Evaluation Protocol}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {IV}Experimental Results}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Dataset}{3}{}\protected@file@percent }
 \newlabel{sec:dataset}{{\mbox  {IV-A}}{3}{}{subsection.4.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Evaluation Metrics}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Core Ablation Results}{3}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds}}{4}{}\protected@file@percent }
-\newlabel{tab:ablation}{{I}{4}{}{table.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Quality-Adaptive Loss Results}{4}{}\protected@file@percent }
-\newlabel{sec:qaresults}{{\mbox  {IV-D}}{4}{}{subsection.4.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Validation via Shuffled-Quality Control}{4}{}\protected@file@percent }
-\newlabel{sec:shuffle}{{\mbox  {IV-E}}{4}{}{subsection.4.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Shuffled-quality control. Shuffling permutes the lesion-to-rating assignment within each training fold while preserving the weight distribution exactly}}{4}{}\protected@file@percent }
-\newlabel{tab:shuffle}{{II}{4}{}{table.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Follow-Up Intervention Sweep}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Existing vs.\ Proposed Methods}{3}{}\protected@file@percent }
+\newlabel{sec:main}{{\mbox  {IV-C}}{3}{}{subsection.4.3}{}}
 \citation{diffmic}
 \citation{ham10000}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds}}{4}{}\protected@file@percent }
+\newlabel{tab:ablation}{{I}{4}{}{table.1}{}}
+\newlabel{sec:shuffle}{{\mbox  {IV-C}}{4}{}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Shuffled-quality control. Shuffling permutes the lesion-to-rating assignment within each training fold while preserving the weight distribution exactly}}{4}{}\protected@file@percent }
+\newlabel{tab:shuffle}{{II}{4}{}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Comparison with the Literature}{4}{}\protected@file@percent }
+\newlabel{sec:comparison}{{\mbox  {IV-D}}{4}{}{subsection.4.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Ablation Study}{5}{}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging}}{5}{}\protected@file@percent }
 \newlabel{tab:breakdown}{{III}{5}{}{table.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Robustness Analyses}{5}{}\protected@file@percent }
-\newlabel{sec:robustness}{{\mbox  {IV-G}}{5}{}{subsection.4.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-H}}Qualitative Analysis: Hard Samples}{5}{}\protected@file@percent }
-\newlabel{sec:qualitative}{{\mbox  {IV-H}}{5}{}{subsection.4.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality malignant lesions that quality-adaptive reweighting has flipped from a miss to a correct call. $q$ is the expert quality rating, $P$ is $P(\mathrm  {malignant})$. In (a) diffuse baseline attention contracts to a single focus; in (b) baseline attention lies off the lesion and moves onto it. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{5}{}\protected@file@percent }
-\newlabel{fig:hardsamples}{{2}{5}{}{figure.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-I}}Comparison with the Literature}{5}{}\protected@file@percent }
-\newlabel{sec:comparison}{{\mbox  {IV-I}}{5}{}{subsection.4.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Robustness Analyses}{5}{}\protected@file@percent }
+\newlabel{sec:robustness}{{\mbox  {IV-F}}{5}{}{subsection.4.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Qualitative Analysis: Hard Samples}{5}{}\protected@file@percent }
+\newlabel{sec:qualitative}{{\mbox  {IV-G}}{5}{}{subsection.4.7}{}}
 \citation{adaface,magface}
 \citation{deepdrid}
 \bibcite{mcrsl}{1}
@@ -82,6 +76,8 @@
 \bibcite{hu2023}{16}
 \bibcite{qgdr}{17}
 \bibcite{deepdrid}{18}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf  {Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf  {Prediction (baseline)} and \textbf  {Prediction (\emph  {hard\_mining})}, each with its $P(\mathrm  {malignant})$ and outcome. \textbf  {Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{6}{}\protected@file@percent }
+\newlabel{fig:hardsamples}{{2}{6}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
 \gdef \@abspage@last{6}
