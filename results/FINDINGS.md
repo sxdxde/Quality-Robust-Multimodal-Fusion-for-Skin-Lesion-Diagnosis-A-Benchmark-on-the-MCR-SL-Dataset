@@ -20,6 +20,7 @@
 > [Shuffled-quality control](#shuffled-quality-control-validity-check--closes-out-the-quality-adaptive-loss-search) ·
 > [Image-level verification + best config](#image-level-training-verification--eval-time-variants-on-hard_mining-final-experiment) ·
 > [Robustness analyses 1–6](#robustness-analyses-the-actual-novelty) ·
+> [Hard-sample Grad-CAM](#qualitative-hard-sample-analysis-with-grad-cam-2026-08-28-final-analysis-increment) ·
 > [Are these scores good?](#are-these-scores-good)
 
 **One-line summary.** First benchmark on MCR-SL. Best configuration: channel-gated
@@ -533,6 +534,67 @@ were added 2026-08-27, post-hoc on existing predictions at zero GPU cost.*
    subject-level systematic bias, and that subject-disjoint splitting is not masking a
    per-patient confound. Report with N=55 stated alongside the p-value, never the p-value alone.
 
+## Qualitative hard-sample analysis with Grad-CAM (2026-08-28, final analysis increment)
+
+Post-hoc on the existing `hard_mining` out-of-fold predictions and per-fold checkpoints — no
+retraining. Script: `scripts/hard_sample_analysis.py`.
+
+**Selection is a systematic 4-category grid, not a cherry-pick**: low-quality/correct,
+low-quality/wrong, high-quality/wrong, and borderline confidence (|P−0.5| smallest). Malignant
+lesions are preferred within each category, since missed malignancies are the clinically
+important error — so all 8 selected samples are malignant, and 6 of the 8 are errors. No lesion
+is reused across categories.
+
+**Grad-CAM targets the post-gate feature map**, not the raw EfficientNet output:
+`gated_map = feature_map * sigmoid(Linear(metadata_vec))`. That is what the model's decision is
+actually computed from; explaining the pre-gate map would show generic backbone saliency
+instead. The metadata vector is detached, so gradients flow only w.r.t. the image features.
+The replicated forward pass was verified to match `MCRSLModel.forward()` to 1e-6.
+
+| panel | lesion | class | quality | true → pred | P(malignant) | outcome |
+|---|---|---|---|---|---|---|
+| (a) | L0232 | BCC | 4.3 (low) | MAL → MAL | 1.000 | correct |
+| (b) | L0197 | **MEL** | 5.3 (low) | MAL → ben | 0.049 | **missed** |
+| (c) | L0121 | **MEL** | **8.3 (high)** | MAL → ben | 0.203 | **missed** |
+| (d) | L0023 | BCC | 1.7 (low) | MAL → MAL | 0.501 | correct, maximally uncertain |
+
+### The finding worth reporting: attention failure vs. decision failure
+
+Panels (b) and (c) are both missed melanomas, but they fail for **different reasons**, and only
+a CAM separates them:
+
+- **(b) is an *attention* failure.** The heatmap sits on a small peripheral region while the
+  large diffuse melanoma fills the rest of the frame. The model looked in the wrong place, and
+  was confidently wrong (P=0.049).
+- **(c) is a *decision* failure.** The heatmap localises the lesion correctly on a
+  **high-quality** image (8.3/10) — and the model still calls it benign. Attention right,
+  decision wrong.
+
+These imply different fixes. (b) points at localisation; (c) points at the features themselves
+failing to separate melanoma from benign, which traces back to having only **8 melanoma lesions**
+in the whole dataset. Worth stating explicitly — it is the kind of distinction a metrics table
+cannot surface.
+
+**Two supporting observations:**
+- **Errors occur at both quality extremes** (5.3 and 8.3) — a visual corroboration of the Q1
+  null result. Failures are not concentrated in poor photographs.
+- **Both missed cases are melanoma**, the rarest malignant class (MEL n=8). The class where
+  small-N hurts most is also the one it is least acceptable to miss.
+
+**Caveats to carry into the caption**, not to be discovered by a reviewer:
+- Grad-CAM here is **7×7 upsampled to 224×224** — it shows approximate spatial attention, not
+  fine structure.
+- These are **8 rule-selected examples out of 231**. Systematic in selection, but illustrative;
+  they do not characterise overall behaviour, which the metrics tables report in full.
+- The CAM explains the **predicted** class (the sign of the backpropagated logit follows the
+  prediction). Always backpropagating +logit would explain "evidence for malignant" even on a
+  benign prediction, producing a near-empty map — verified in testing and fixed.
+
+**Outputs**: `results/hard_samples_gradcam.png` (8-sample grid, for slides),
+`results/hard_samples_gradcam_1col.pdf` (4 panels, 3.24×6.98in, fits a 3.5in IEEE column),
+`results/hard_samples_table.csv` (per-sample detail for the appendix).
+Optional stretch not run: `--compare-baseline` adds a baseline-vs-`hard_mining` CAM row.
+
 ## Quality-adaptive loss reweighting (follow-up to robustness analysis #2)
 
 Motivation: the auxiliary quality-prediction head (analysis #2 above) failed — predicting
@@ -1041,6 +1103,10 @@ Anything cited in the paper should be traceable to one of these. All under `resu
 | `robustness_quality_reweighting_comparison.csv/.png` | four-mechanism tercile comparison |
 | `robustness_quality_reweighting_gaps.csv` | high−low gap per mechanism |
 | `robustness_shuffled_quality_control.csv/.png` | the shuffled control (real vs. shuffled) |
+| `hard_samples_gradcam.png` | hard-sample Grad-CAM grid, 8 samples (slides) |
+| `hard_samples_gradcam_1col.pdf` | same analysis, 4 panels, IEEE single-column |
+| `hard_samples_table.csv` | per-sample detail behind the Grad-CAM figure |
+| `dataset_gallery.png` / `modality_comparison.png` | what the model trains on; dermoscopic vs clinical |
 | `paper_examples/` | example lesion images for the qualitative figure |
 | `logs/train_<tag>.log` | full per-epoch training curves (the source for the root-cause diagnosis) |
 
@@ -1059,6 +1125,7 @@ Anything cited in the paper should be traceable to one of these. All under `resu
 | IV. Table IV — **shuffled control** | real vs. shuffled, both mechanisms | "Shuffled-quality control" |
 | IV. Table V — best config | `hard_mining` + TTA + multi-image, with std | "Eval-time variants" |
 | V. Robustness | six analyses, each with its N | "Robustness analyses" |
+| V-x. Qualitative Analysis | hard-sample Grad-CAM figure + table | "Qualitative hard-sample analysis" |
 | VI. Limitations | consolidated list below | "Consolidated limitations" |
 | VI. Future work | clinical images; image-level pos_weight; multi-seed | "Not yet tried" |
 
@@ -1127,6 +1194,10 @@ The five numbers most likely to be quoted, in the form they should be quoted:
 - **Robustness headline**: across six analyses, no reliable relationship between model error
   and either image quality or expert diagnostic certainty once class composition is controlled;
   no subject-level error clustering (p=0.954, N=55 subjects).
+- **Qualitative headline**: Grad-CAM on missed melanomas separates two distinct failure modes —
+  the model attending to the wrong region (low quality, P=0.05) versus attending correctly and
+  still misclassifying (**high** quality 8.3/10, P=0.20). Errors appear at both quality extremes,
+  visually corroborating the Q1 null.
 
 **Framing rule for the abstract**: lead with *"first benchmark on MCR-SL + a quality-adaptive
 loss validated by a shuffled control"*, not with a SOTA claim. There is no prior MCR-SL number
@@ -1231,3 +1302,25 @@ positives that controls dissolve.
   (see Check 4 above), left in place to preserve cross-row comparability on the final day and
   because the bias runs toward sensitivity. Second concrete future-work item; the paper should
   disclose it rather than let a reader discover it.
+- **Qualitative hard-sample Grad-CAM analysis: DONE** (2026-08-28) — see that section above.
+  Separated *attention* failure (b: CAM on the wrong region) from *decision* failure (c: CAM
+  correct, prediction still wrong) on two missed melanomas. **This was the last planned
+  analysis; the project is now in writing mode.** The only un-run item is the optional
+  `--compare-baseline` stretch (baseline-vs-`hard_mining` CAMs side by side), deliberately left
+  out so it could not delay writing.
+- **Threshold recalibration as future work (new, 2026-08-28).** Distinct from the per-fold
+  Youden's-J attempt that failed: that picked *five* thresholds on 8–9 malignant val lesions
+  each, far too noisy. Pooling all folds' validation predictions to select **one global
+  threshold** is a materially more stable procedure and was never tried. Computed from the
+  existing plain-baseline predictions, moving the threshold from 0.50 to 0.20 would take missed
+  malignancies from 14 to 7 at the cost of ~16 extra false alarms out of 189 benign lesions —
+  with AUROC at 0.918 the ranking is good and 0.5 is simply the wrong operating point for
+  screening. Note that below ~0.15 no further sensitivity is gained (6 lesions are never ranked
+  highly at any threshold), so this is a partial fix, not a complete one.
+- **Domain pretraining (ISIC / HAM10000) — the highest-value untried lever.** Every loss-side
+  idea in this project tried to extract more from 42 malignant lesions. A three-stage chain
+  (ImageNet → ISIC/HAM10000 binary → MCR-SL fine-tune) is the only proposal that brings in more
+  *malignant examples*, and so is the one most likely to move the residual errors that
+  threshold tuning cannot reach — including the (c)-type decision failures above. The
+  quality-adaptive loss would still apply only at the final stage, since neither external
+  dataset carries quality ratings.
