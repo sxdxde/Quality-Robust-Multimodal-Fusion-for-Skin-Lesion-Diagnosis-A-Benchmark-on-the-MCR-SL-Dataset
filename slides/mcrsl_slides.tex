@@ -109,7 +109,7 @@ NEV, SK, BCC, AK, ATY, MEL, SCC, ANG, DF.
 \vspace{0.1cm}
 \item \textbf{Three apparent positive findings that we overturned ourselves} using proper controls --- a validation discipline we report as part of the contribution, not an appendix.
 \vspace{0.1cm}
-\item Final result: \textbf{0.840 $\pm$ 0.095 balanced accuracy} (\texttt{hard\_mining} + TTA + multi-image averaging), \emph{within noise of} the closest verified binary comparator (0.836) using ${\sim}10\times$ less training data.
+\item Final result: \textbf{0.840 $\pm$ 0.095 balanced accuracy} (\texttt{hard\_mining} + TTA + multi-image averaging), \emph{within noise of} the closest verified binary comparator (0.836), on a dataset with $7\times$ fewer lesions.
 \end{enumerate}
 \vspace{0.15cm}
 {\footnotesize The architecture is unchanged from standard components. The contribution is the \emph{loss weighting} and the \emph{validation}, not a new network.}
@@ -692,7 +692,7 @@ At $N=234$ with $\sim$8--9 malignant lesions per fold, \textbf{an uncontrolled f
 \centering
 \begin{tabular}{|l|c|c|c|}
 \hline
-\textbf{Source} & \textbf{Task} & \textbf{N} & \textbf{Bal.\ acc.} \\
+\textbf{Source} & \textbf{Task} & \textbf{Eval unit} & \textbf{Bal.\ acc.} \\
 \hline
 This work (channel-gated baseline) & binary & 234 lesions & 0.783 $\pm$ 0.076 \\
 This work (+ \texttt{hard\_mining}) & binary & 234 lesions & 0.820 $\pm$ 0.078 \\
@@ -700,20 +700,48 @@ This work (+ TTA + multi-image) & binary & 234 lesions & \textbf{0.840 $\pm$ 0.0
 DiffMIC, PAD-UFES-20 (2025) & binary & 2298 images & 0.836 \\
 \hline
 \end{tabular}
-\vspace{0.35cm}
+\vspace{0.3cm}
 
 \raggedright
 \small
 \begin{alertblock}{This is NOT a claim of beating the state of the art}
-\begin{itemize}
-\item \textbf{Different dataset, different institution, no shared test set.}
-\item Our fold-to-fold std ($\pm 0.078$--$0.095$) is \textbf{over 20$\times$ larger} than the 0.004 nominal gap --- \textbf{statistically indistinguishable}.
-\item The last +0.020 came from \emph{eval-time averaging}, not a better method.
-\end{itemize}
+\textbf{Different dataset, different institution, no shared test set.} Our fold-to-fold std ($\pm 0.078$--$0.095$) is \textbf{over 20$\times$ larger} than the 0.004 nominal gap --- \textbf{statistically indistinguishable}. The last +0.020 came from \emph{eval-time averaging}, not a better method.
 \end{alertblock}
 \centering
-\small Correct framing: \textbf{within noise of the closest verified binary comparator, using ${\sim}10\times$ less training data.}\\
-{\footnotesize Encouraging context for a 240-lesion dataset --- not a win.}
+\small \textbf{Within noise of the closest verified binary comparator} --- see the next slide for why ``$N$'' is not directly comparable.
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{``234 vs.\ 2298'' Is Not a Like-for-Like Comparison}
+The two numbers on the previous slide count \textbf{different things}. Ours is a \emph{lesion} count; theirs is an \emph{image} count.
+\vspace{0.2cm}
+\centering
+\small
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Quantity} & \textbf{MCR-SL (ours)} & \textbf{PAD-UFES-20} & \textbf{Ratio} \\
+\hline
+Images available & 2{,}131 & 2{,}298 & 1.1$\times$ \\
+\rowcolor{green!12}\textbf{Images used to train} & \textbf{1{,}352} (dermoscopic) & \textbf{2{,}298} & \textbf{1.7$\times$} \\
+\rowcolor{yellow!15}\textbf{Lesions} & \textbf{234} usable & \textbf{$\sim$1{,}641} & \textbf{7.0$\times$} \\
+Subjects / patients & 60 & $\sim$1{,}373\rlap{*} & $\sim$23$\times$ \\
+\hline
+Evaluation unit & \textbf{per lesion} & \textbf{per image} & --- \\
+\hline
+Malignant & 42 lesions (18\%) & \rlap{*}\phantom{xx} & --- \\
+Non-malignant & 192 lesions (82\%) & \rlap{*}\phantom{xx} & --- \\
+\hline
+\end{tabular}
+\vspace{0.25cm}
+
+\raggedright
+\small
+\begin{itemize}
+\item We train on \textbf{1{,}352 images}, not 234 --- every dermoscopic image of a training lesion is a separate sample ($\sim$5.7 per lesion). \alert{``10$\times$ less data'' overstated our disadvantage; removed.}
+\item \textbf{The defensible statement is $7\times$ fewer lesions}, with \emph{comparable} image counts. Our 60 subjects vs.\ ${\sim}1{,}373$ patients is the largest real gap.
+\item Our 18\% malignant rate is \textbf{heavily skewed} --- exactly why we report \emph{balanced} accuracy.
+\end{itemize}
+{\footnotesize \rlap{*}\phantom{x} PAD-UFES-20 patient count and cancer/non-cancer split not independently re-verified --- confirm against Pacheco et al.\ (2020) before submission.}
 \end{frame}
 
 % ---------------------------------------------------------------
@@ -751,7 +779,7 @@ A deliberate go/no-go gate ran \textbf{before} any training code was written, an
 \small
 \begin{block}{What we found}
 \begin{itemize}
-\item \textbf{First benchmark on MCR-SL.} Final: \textbf{0.840 $\pm$ 0.095} balanced accuracy --- \emph{within noise} of the closest verified binary comparator, with ${\sim}10\times$ less data.
+\item \textbf{First benchmark on MCR-SL.} Final: \textbf{0.840 $\pm$ 0.095} balanced accuracy --- \emph{within noise} of the closest verified binary comparator, on $7\times$ fewer lesions.
 \item \textbf{Q1 (does quality degrade performance?): null} --- no significant relationship at $N=231$.
 \item \textbf{Q2 (can we train for quality robustness?): yes} --- \texttt{hard\_mining} gives +0.037 balanced accuracy / +0.092 sensitivity, and \textbf{a shuffled control proves the gain depends on the real ratings}. Sensitivity on the \emph{worst} images rises $0.667 \to 0.810$.
 \item \textbf{Three apparent positives we overturned ourselves}, plus quality-aware training, contrastive loss and alternative optimisers --- all reported as negatives.

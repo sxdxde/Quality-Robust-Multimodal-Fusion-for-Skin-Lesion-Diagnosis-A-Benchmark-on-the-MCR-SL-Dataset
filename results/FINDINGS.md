@@ -352,6 +352,35 @@ paper; not independently verified, reported in the paper as such rather than as 
 confirmed benchmark. HAM10000/PH2 headline numbers (accuracy 0.88–0.99) remain not fair
 comparators — 40x+ more data and/or an easier task and/or looser evaluation rigor.
 
+### Comparing like with like: "234 vs. 2298" was not a fair ratio
+
+**A real error, caught 2026-08-28 and corrected everywhere.** The claim "~10x less training
+data" (which appeared 3x in the slides and once above) was computed as PAD-UFES-20's **image**
+count ÷ our **lesion** count — two different units. Our models do not train on 234 samples; they
+train on ~1,352 dermoscopic images (every dermoscopic image of a training lesion is a separate
+sample, ~5.7 per lesion — see "Image-level training verification").
+
+| quantity | MCR-SL (ours) | PAD-UFES-20 | ratio |
+|---|---|---|---|
+| images available | 2,131 | 2,298 | 1.1x |
+| **images used for training** | **1,352** (dermoscopic) | **2,298** | **1.7x** |
+| **lesions** | **234** usable | **~1,641** | **7.0x** |
+| subjects / patients | 60 | ~1,373 * | ~23x |
+| evaluation unit | **per lesion** | **per image** | — |
+| malignant | 42 lesions (18%) | * | — |
+| non-malignant | 192 lesions (82%) | * | — |
+
+\* PAD-UFES-20's patient count and cancer/non-cancer split are **not independently re-verified**
+in this project — the 1,641 lesion figure comes from the earlier literature pass, but the class
+balance and patient count should be confirmed against Pacheco et al. (2020) before submission.
+Do not put them in the paper as verified numbers until that check is done.
+
+**What to say instead of "10x less data":** *"7x fewer lesions, with comparable image counts."*
+That is defensible and still makes the point. The largest genuine gap is subjects — 60 vs.
+~1,373 patients — which matters more than either image or lesion count for generalization, and
+is the honest thing to emphasize. Note also the evaluation units differ (we report per-lesion,
+DiffMIC per-image), so even the headline metrics are not measuring quite the same quantity.
+
 ## Robustness analyses (the actual novelty)
 
 *Six analyses: 1–4 were the original set; 5–6 (diagnostic certainty, intra-subject consistency)
@@ -538,7 +567,9 @@ hard_mining) occasionally destabilizing a gradient step.
 selection rule (used for every config in this project, not just the quality-weight ones) is
 likely capturing noise spikes rather than converged states — test balanced accuracy swings
 0.70–0.93 fold-to-fold for `hard_mining` alone. This is very likely the dominant remaining
-gap to DiffMIC's 0.836 (2298 images vs. our 234 lesions — ~10x less data means proportionally
+gap to DiffMIC's 0.836 (2298 images vs. our 234 lesions — **note: this "~10x less data" phrasing
+was wrong and is corrected in "Comparing like with like" below; it divided their *image* count by
+our *lesion* count. The real gap is 7x fewer lesions with comparable image counts** — proportionally
 noisier per-fold estimates, an inherent MCR-SL-scale limitation, not something a loss-formula
 change alone can fix). Stochastic Weight Averaging (Izmailov et al. 2018; SWAD, Cha et al.
 2021) is documented in the literature as the established fix for exactly this failure mode
