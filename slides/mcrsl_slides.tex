@@ -98,6 +98,33 @@ evaluation is \textbf{per-lesion} (one prediction each, from the \texttt{diagnos
 \end{frame}
 
 % ---------------------------------------------------------------
+\begin{frame}{What the Model Actually Trains On}
+\centering
+\includegraphics[height=0.70\textheight]{figures/dataset_gallery.png}
+
+\raggedright
+{\scriptsize Real MCR-SL dermoscopic diagnosis images. \textbf{Top:} all three malignant classes
+(BCC, MEL, SCC). \textbf{Middle:} non-malignant (NEV, SK, AK, ATY). \textbf{Bottom:} expert quality
+1.7 $\rightarrow$ 9.3 --- the leftmost is washed out with the lesion barely visible, the rightmost
+sharp and structured. \alert{The bottom row is the paper's premise made visual}, and
+\texttt{hard\_mining} up-weights the left-hand cases.}
+\end{frame}
+
+% ---------------------------------------------------------------
+\begin{frame}{Two Modalities --- and Why We Use Only One}
+\centering
+\includegraphics[height=0.55\textheight]{figures/modality_comparison.png}
+
+\raggedright
+\footnotesize
+\begin{itemize}
+\item \textbf{Dermoscopic} (1352): contact optics, lesion fills the frame, sub-surface pigment structure visible. \textbf{What we train and evaluate on.}
+\item \textbf{Clinical} (779): ordinary camera, lesion small in frame, surrounding skin and \emph{other} lesions included --- a genuinely different visual domain.
+\item Mixing them without a modality indicator risks confusing the encoder, so clinical images are \alert{deliberately unused}: 37\% of the dataset left on the table, and our most concrete future-work item.
+\end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------
 \begin{frame}{Why the Analysis Tables Say $N=231$, Not 234}
 A fair question: the quality terciles are $85 + 93 + 53 = \mathbf{231}$, but the binary task has \textbf{234} usable lesions. Where did 3 go?
 \vspace{0.3cm}
