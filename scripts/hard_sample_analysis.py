@@ -295,6 +295,9 @@ def main():
                  "post-gate feature map\n(out-of-fold predictions; each lesion scored by the "
                  "fold in which it was held out)", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.965])
+    # tight_layout alone leaves the next block's 4-line caption sitting on top
+    # of the CAM row above it; give the rows explicit breathing room.
+    fig.subplots_adjust(hspace=0.34)
     out_fig = args.results_dir / ("hard_samples_gradcam_compare.png" if args.compare_baseline
                                   else "hard_samples_gradcam.png")
     fig.savefig(out_fig, dpi=160)
