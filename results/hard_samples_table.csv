@@ -1,5 +1,3 @@
 panel,category,lesion_id,unified_diagnosis,mean_image_rating,tercile,true_malignant,pred_malignant,pred_prob,correct,fold,histo_confirmed
-(a),"low-quality, CORRECT",L0232,BCC,4.33,low,1.0,1,1.0,True,1,True
-(b),"low-quality, WRONG",L0197,MEL,5.33,low,1.0,0,0.049,False,1,False
-(c),"high-quality, WRONG",L0121,MEL,8.33,high,1.0,0,0.203,False,2,False
-(d),borderline confidence,L0023,BCC,1.67,low,1.0,1,0.501,True,4,True
+(a),"low-quality, WRONG",L0197,MEL,5.33,low,1.0,0,0.049,False,1,False
+(b),"high-quality, WRONG",L0121,MEL,8.33,high,1.0,0,0.203,False,2,False
