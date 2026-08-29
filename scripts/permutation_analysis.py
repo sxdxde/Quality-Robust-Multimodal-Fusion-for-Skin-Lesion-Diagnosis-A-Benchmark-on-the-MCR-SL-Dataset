@@ -112,7 +112,13 @@ def main():
     ax.set_xlabel(NICE[args.metric], fontsize=7.5)
     ax.set_ylabel("permutations", fontsize=7.5)
     ax.tick_params(labelsize=6.5)
-    ax.legend(fontsize=5.8, loc="upper left", framealpha=0.9)
+    # keep the real-result line off the frame edge, and leave headroom so the
+    # legend does not sit on top of a bar
+    lo, hi = min(min(vals), base, real), max(max(vals), base, real)
+    pad = (hi - lo) * 0.10
+    ax.set_xlim(lo - pad, hi + pad)
+    ax.set_ylim(0, ax.get_ylim()[1] * 1.45)
+    ax.legend(fontsize=5.8, loc="upper left", framealpha=0.95)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     fig.tight_layout(pad=0.3)
