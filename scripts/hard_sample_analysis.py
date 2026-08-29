@@ -284,7 +284,8 @@ def main():
         hard = d[(~d["correct_base"]) & d["correct"]].sort_values("mean_image_rating").head(args.per_row)
         if len(hard) == 0:
             raise SystemExit("no lesions where the baseline is wrong and the proposed loss correct")
-        sel = pd.concat([easy.assign(row="non-hard"), hard.assign(row="hard")], ignore_index=True)
+        sel = pd.concat([easy.assign(row="non-hard", category="non-hard"),
+                         hard.assign(row="hard", category="hard")], ignore_index=True)
         print(f"\nselected {len(easy)} non-hard and {len(hard)} hard examples")
 
     print(f"\nselected {len(sel)} samples:")
