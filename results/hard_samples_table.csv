@@ -1,3 +1,7 @@
 panel,category,lesion_id,unified_diagnosis,mean_image_rating,tercile,true_malignant,pred_malignant,pred_prob,correct,fold,histo_confirmed
-(a),selected,L0112,BCC,5.67,low,1.0,1,0.89,True,1,True
-(b),selected,L0150,MEL,4.33,low,1.0,1,0.889,True,2,True
+(a),non-hard,L0084,BCC,6.67,mid,1.0,1,1.0,True,1,True
+(b),non-hard,L0154,NEV,7.67,high,0.0,0,0.0,True,3,False
+(c),non-hard,L0216,NEV,7.0,mid,0.0,0,0.0,True,2,False
+(d),hard,L0055,NEV,4.33,low,0.0,0,0.497,True,0,False
+(e),hard,L0150,MEL,4.33,low,1.0,1,0.889,True,2,True
+(f),hard,L0004,NEV,4.67,low,0.0,0,0.188,True,2,False

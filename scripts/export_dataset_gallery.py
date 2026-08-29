@@ -102,6 +102,10 @@ def main():
     ap.add_argument("--data-dir", required=True, type=Path)
     ap.add_argument("--images-root", type=Path, default=None)
     ap.add_argument("--out-dir", type=Path, default=Path("results"))
+    ap.add_argument("--simple", action="store_true",
+                    help="emit a single compact row of representative dermoscopic "
+                         "images, for showing the reader what the inputs look like")
+    ap.add_argument("--n-simple", type=int, default=5)
     args = ap.parse_args()
 
     images_root = args.images_root or args.data_dir
