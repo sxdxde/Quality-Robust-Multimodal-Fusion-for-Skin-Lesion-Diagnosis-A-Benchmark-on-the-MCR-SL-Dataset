@@ -31,7 +31,7 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Prediction Heads}{2}{}\protected@file@percent }
 \newlabel{sec:heads}{{\mbox  {III-D}}{2}{}{subsection.3.4}{}}
 \citation{adaface,magface}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the proposed multimodal architecture }}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the proposed multimodal architecture. Solid arrows are the forward data path, red dashed arrows the backward gradient flow, and the black dashed arrow the quality path, which enters only the loss and receives no gradient.}}{3}{}\protected@file@percent }
 \newlabel{fig:arch}{{1}{3}{}{figure.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-E}}Quality-Adaptive Loss}{3}{}\protected@file@percent }
 \newlabel{sec:qaloss}{{\mbox  {III-E}}{3}{}{subsection.3.5}{}}
@@ -39,6 +39,8 @@
 \@writefile{toc}{\contentsline {section}{\numberline {IV}Experimental Results}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Dataset}{4}{}\protected@file@percent }
 \newlabel{sec:dataset}{{\mbox  {IV-A}}{4}{}{subsection.4.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Representative dermoscopic diagnosis images, one per unified-diagnosis class, with mean expert quality rating $q$.}}{4}{}\protected@file@percent }
+\newlabel{fig:samples}{{2}{4}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Evaluation Metrics}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Results}{4}{}\protected@file@percent }
 \newlabel{sec:main}{{\mbox  {IV-C}}{4}{}{subsection.4.3}{}}
@@ -55,8 +57,8 @@
 \citation{supcon}
 \citation{adamw}
 \citation{sam}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions }}{5}{}\protected@file@percent }
-\newlabel{fig:hardsamples}{{2}{5}{}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Grad-CAM on the post-gate feature map. Top: lesions both models call confidently. Bottom: low-rated lesions the baseline misclassifies and the proposed loss corrects.}}{5}{}\protected@file@percent }
+\newlabel{fig:hardsamples}{{3}{5}{}{figure.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Comparison with the Literature}{5}{}\protected@file@percent }
 \newlabel{sec:comparison}{{\mbox  {IV-E}}{5}{}{subsection.4.5}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Comparison with existing works.}}{5}{}\protected@file@percent }
@@ -82,9 +84,9 @@
 \bibcite{magface}{15}
 \bibcite{hu2023}{16}
 \bibcite{qgdr}{17}
+\bibcite{deepdrid}{18}
 \@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Ablation Results on Hyper parameters }}{6}{}\protected@file@percent }
 \newlabel{tab:sweep}{{IV}{6}{}{table.4}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
-\bibcite{deepdrid}{18}
-\gdef \@abspage@last{7}
+\gdef \@abspage@last{6}

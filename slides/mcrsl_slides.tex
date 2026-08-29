@@ -74,11 +74,11 @@ Closest to this work, Hu and Yang \cite{hu2023} have applied knowledge-based los
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Proposed Methodology}
 The Proposed architecture is as shown in Fig.~\ref{fig:arch} , it comprises of the following :(i)Image Encoder,(ii)MetaData Encoder (iii)Channel Gated fusion (iv)Prediction Heads (v)Quality-Adaptive Loss  
-\begin{figure*}[t] %% Increase font size %
+\begin{figure*}[t]
     \centering
-    \includegraphics[width=0.90\textwidth]{mcrsl_archi_widescreen.png}
+    \includegraphics[width=\textwidth]{mcrsl_archi_widescreen_nolegend.png}
     \vspace{-2mm}
-    \caption{Overview of the proposed multimodal architecture }
+    \caption{Overview of the proposed multimodal architecture. Solid arrows are the forward data path, red dashed arrows the backward gradient flow, and the black dashed arrow the quality path, which enters only the loss and receives no gradient.}
     \label{fig:arch}
 \end{figure*}
 
@@ -135,8 +135,6 @@ term; only how much each sample contributes changes, never what is differentiate
 range was fixed rather than tuned, and only these two directions were tested, so the
 comparison isolates direction from magnitude.
 
-The mechanism leaves gradient flow unchanged: as shown by the dashed quality path in the figure above, $w_i^{\mathrm{qual}}$ is a precomputed, non-differentiable scalar on the loss, not a learned parameter. Gradients still propagate through the shared architecture by the standard chain rule from the weighted binary term (red backward path); only the relative contribution of each sample to that gradient changes, never what is differentiated.
-
 Only \emph{hard\_mining} survived validation, in the opposite direction from AdaFace and MagFace \cite{adaface,magface}. Low-quality samples do not uniformly become less informative under degradation. Image degradation can leave the underlying diagnostic label intact even as the image itself becomes harder to interpret, so training the model to work harder on such a sample does not, in itself, amount to fitting noise. Whether emphasis is warranted depends on what the label was based on and on the nature of the degradation, not on image quality being uniformly detrimental. In dermoscopy, the diagnostic label was assigned from that same image, so the label stays valid and the sample remains an informative hard example rather than a corrupted one.
 
 This mechanism is distinct from the auxiliary quality-regression head described above, which instead asks the model to \emph{predict} the rating as a secondary output, adding parameters and a competing objective to the shared representation. Reweighting adds no parameters and changes only which samples dominate the gradient. The two interventions are mechanistically unrelated, and the auxiliary head's negative result stands independently; it is not superseded by the reweighting result.
@@ -147,8 +145,14 @@ Both directions, along with every other configuration compared later, are evalua
 
 \subsection{Dataset}
 \label{sec:dataset}
-MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 16 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded, leaving 234 usable.
-%%% SAMPLE IMAGES HERE %%%
+MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 17 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded, leaving 234 usable.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/dataset_samples.pdf}
+\caption{Representative dermoscopic diagnosis images, one per unified-diagnosis class, with mean expert quality rating $q$.}
+\label{fig:samples}
+\end{figure}
+
 \subsection{Evaluation Metrics}
 The proposed method has been evaluated on the following metrics:
 Accuracy is the proportion of all lesions classified correctly, sensitivity the proportion of malignant lesions correctly identified, and specificity the proportion of non-malignant lesions correctly cleared. Since accuracy alone is misleading when the malignant class is a $17.9\%$ minority, the primary metric is balanced accuracy, the unweighted mean of the two class-wise rates, reported alongside macro-averaged F1:
@@ -158,11 +162,11 @@ Accuracy is the proportion of all lesions classified correctly, sensitivity the 
 \begin{equation}
 \text{macro-F1}=\frac{1}{2}\sum_{c\in\{0,1\}}\frac{2\,\mathrm{Pre}_c\,\mathrm{Rec}_c}{\mathrm{Pre}_c+\mathrm{Rec}_c},
 \end{equation}
-where $\mathrm{Pre}_c$ and $\mathrm{Rec}_c$ are precision and recall for class $c$. We also report AUROC, the probability that a randomly drawn malignant lesion receives a higher predicted probability than a randomly drawn non-malignant one. All are aggregated across the five test folds as mean and standard deviation. Balanced accuracy has been used for checkpoint selection and as the primary comparison metric, since accuracy alone is misleading when the malignant class is a $17.9\%$ minority.
+where $\mathrm{Pre}_c$ and $\mathrm{Rec}_c$ are precision and recall for class $c$. We also report AUROC, the probability that a randomly drawn malignant lesion receives a higher predicted probability than a randomly drawn non-malignant one. All are aggregated across the five test folds as mean and standard deviation. Balanced accuracy has also been used for checkpoint selection.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
 \subsection{Results}% REduce text %%
 \label{sec:main}
-The results obtained through the proposed method is as shownin Table\ref{tab:breakdown} Channel-gated fusion has reached the highest macro-F1 but has not dominated: the image-only baseline has higher sensitivity (0.697 vs.\ 0.672) and AUROC (0.895 vs.\ 0.881), and its balanced accuracy is effectively tied (0.784 vs.\ 0.783, against a standard deviation of 0.07--0.09). We report this rather than framing it as a clean win for the fusion method.
+Table~\ref{tab:breakdown} reports the proposed method. Channel-gated fusion has reached the highest macro-F1 but has not dominated: the image-only baseline has higher sensitivity (0.697 vs.\ 0.672) and AUROC (0.895 vs.\ 0.881), and its balanced accuracy is effectively tied (0.784 vs.\ 0.783, against a standard deviation of 0.07--0.09). We report this rather than framing it as a clean win for the fusion method.
 \begin{table}[htbp]
 \caption{Results of the Proposed Method }
 \label{tab:breakdown}
@@ -191,22 +195,22 @@ The proposed quality-adaptive loss improves every core metric over the baseline:
 \label{sec:shuffle}
 The obvious objection is that any per-sample reweighting might act as a regularizer, leaving the ratings incidental. We have tested this directly: within each fold's training portion the ratings are permuted across lesions, preserving the weight distribution exactly while destroying the lesion-to-rating correspondence. All else is identical, and evaluation always uses the true ratings.
 
-Under this control the proposed loss falls from 0.820 to 0.775 balanced accuracy and from 0.764 to 0.667 sensitivity, returning to the baseline's 0.783 and 0.672. A distribution-matched but uninformative weighting therefore recovers none of the gain, establishing that the improvement depends on the weights tracking real quality rather than on reweighting as such. This is a causal argument rather than a statistical one, and it is why the result is reported despite an effect size comparable to the fold-to-fold standard deviation.
+Under this control the proposed loss falls from 0.820 to 0.775 balanced accuracy and from 0.764 to 0.667 sensitivity, returning to the baseline's 0.783 and 0.672. A distribution-matched but uninformative weighting therefore recovers none of the gain, establishing that the improvement depends on the weights tracking real quality rather than on reweighting as such. This is a causal argument rather than a statistical one.
 
 The control has also been informative negatively. The \emph{trust} variant's one apparent advantage, a narrower accuracy gap between the highest and lowest quality terciles (0.082 against the baseline's 0.091), narrows further still under shuffling, to 0.021, while its balanced accuracy falls from 0.788 to 0.763: a weighting carrying no quality information produces a flatter profile than the mechanism intended to produce one. That advantage is therefore reported as a reversed finding rather than a second positive result.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Qualitative Results} %% To be changed with hard and soft samples and image explanation  % 
 \label{sec:qualitative}
-Gradients have been taken with respect to the feature map \emph{after} the metadata gate, the representation the decision is computed from, with the metadata branch held fixed. Fig.~\ref{fig:hardsamples} compares the baseline and reweighted models on the two lowest-quality malignant lesions the loss has flipped from a miss to a correct call.
+Gradients have been taken with respect to the feature map \emph{after} the metadata gate, the representation the decision is computed from, with the metadata branch held fixed. Fig.~\ref{fig:hardsamples} contrasts two regimes chosen by a fixed rule rather than by inspection: the top row holds the three lesions both models call most confidently, the bottom row the three lowest-rated lesions the baseline gets wrong and the proposed loss corrects.
 
-In (a), a basal cell carcinoma rated 5.7, the baseline has assigned $P=0.02$, a confident miss, with attention spread diffusely; under reweighting attention contracts onto a single focus and the call becomes $P=0.89$. In (b), a melanoma rated 4.3, baseline attention falls on the left edge away from the pigmented region and the lesion is missed at $P=0.27$; under reweighting attention moves onto the lesion and the call becomes $P=0.89$. Both lie in the lowest quality tercile, where reweighting assigns its largest weights.
+The rows separate cleanly by quality, mean expert rating 7.1 against 4.4, with all three corrected lesions in the lowest tercile where the loss assigns its largest weights. In the top row attention sits compactly on the lesion and the two models agree to within $10^{-3}$, so reweighting leaves easy cases untouched. In the bottom row it changes the call: for the melanoma in (e), rated 4.3, baseline attention falls away from the pigmented region and the lesion is missed at $P=0.28$, whereas under reweighting attention moves onto the lesion and the call becomes $P=0.89$. The two false positives in (d) and (f) are also corrected, though (d) only marginally, from $P=0.53$ to $P=0.50$.
 
-These are illustrative rather than representative: across the 231 lesions the reweighting fixes six malignant lesions and breaks two, a net gain of four, which is what a $+0.092$ sensitivity amounts to at this scale.
+These are illustrative rather than representative. Across the 231 labelled lesions the reweighting fixes six malignant lesions and breaks two, a net gain of four, which is what a $+0.092$ sensitivity amounts to at this scale; on non-malignant lesions it is net negative, seven fixed against twelve broken, which is the specificity cost noted above.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{figures/hard_samples_gradcam_compare_1col.pdf}
-\caption{Grad-CAM on the post-gate feature map for the two lowest-quality lesions }
+\includegraphics[width=\linewidth]{figures/hard_vs_nonhard_gradcam.pdf}
+\caption{Grad-CAM on the post-gate feature map. Top: lesions both models call confidently. Bottom: low-rated lesions the baseline misclassifies and the proposed loss corrects.}
 \label{fig:hardsamples}
 \end{figure}
 
@@ -258,32 +262,24 @@ AUROC & \textbf{0.895 $\pm$ 0.053} & 0.851 $\pm$ 0.080 & 0.881 $\pm$ 0.065 \\
 \end{tabular}
 \end{table}
 
-Ablation study has been done on eleven configurationsunder identical protocol, each varying one
-component of the channel-gated method: the loss (focal loss \cite{focal}), the input (hair
-removal and colour normalisation), the objective (a contrastive auxiliary term \cite{supcon}),
-the optimiser (decoupled weight decay with a cosine schedule \cite{adamw}, sharpness-aware
-minimisation \cite{sam}), and the evaluation (flip-averaged and multi-image test-time
-averaging), plus four stacked combinations. Table~\ref{tab:sweep} reports all eleven in full.
-Sharpness-aware minimisation with test-time augmentation reached 0.822, the best of this
-sweep. The contrastive auxiliary loss and the alternative optimiser each underperformed the
-baseline, and stacking every promising intervention together reached only 0.759.
+Eleven configurations have been run under an identical protocol, each varying one component of
+the channel-gated method: the loss (focal loss \cite{focal}), the input (hair removal and colour
+normalisation), the objective (a contrastive auxiliary term \cite{supcon}), the optimiser
+(decoupled weight decay with a cosine schedule \cite{adamw}, sharpness-aware minimisation
+\cite{sam}), and the evaluation (flip-averaged and multi-image test-time averaging), plus four
+stacked combinations. Table~\ref{tab:sweep} reports all eleven. Sharpness-aware minimisation with
+test-time augmentation is the best of the sweep at 0.822; the contrastive term and the alternative
+optimiser each underperform the baseline, and stacking every promising intervention reaches only
+0.759.
 
-Applying the two evaluation-time interventions on top of the proposed loss, rather than on
-top of the plain baseline, has produced this paper's best configuration. Table~\ref{tab:breakdown}
-decomposes it. Test-time augmentation has raised balanced accuracy to 0.833 and sensitivity to
-0.808, the highest sensitivity of any configuration reported here; adding multi-image
-averaging has raised balanced accuracy further to 0.840 $\pm$ 0.095. Notably, multi-image
-averaging has stacked cleanly here, whereas it reduced balanced accuracy when combined with
-sharpness-aware minimization and test-time augmentation in the sweep above; that
-non-additivity has therefore been specific to that combination rather than a general property
-of the intervention.
-
-The decomposition matters for how the headline number should be read. Of the total 0.057 gain
-over the baseline, 0.037, or roughly 65\%, has come from the quality-adaptive loss and has
-been causally validated above. The remaining 0.020 has come from generic evaluation-time
-averaging that requires no retraining and has nothing to do with image quality. We state this
-split explicitly so that the contribution attributable to the proposed mechanism is not
-overstated by the final figure.
+Applying the two evaluation-time interventions on top of the proposed loss instead has produced
+this paper's best configuration, decomposed in Table~\ref{tab:breakdown}: test-time augmentation
+has raised balanced accuracy to 0.833 and sensitivity to 0.808, and multi-image averaging has
+raised it further to 0.840 $\pm$ 0.095, stacking cleanly here unlike in the sweep above. Of the
+total 0.057 gain, 0.037, roughly 65\%, has come from the quality-adaptive loss and is causally
+validated above; the remaining 0.020 has come from generic evaluation-time averaging that needs
+no retraining and has nothing to do with image quality. We state this split so that the
+mechanism's contribution is not overstated by the final figure.
 
 \begin{table}[htbp]
 \caption{Ablation Results on Hyper parameters }

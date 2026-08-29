@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 23:12
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 23:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -643,33 +643,38 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 
 ]
-<mcrsl_archi_widescreen.png, id=14, 1826.825pt x 1027.84pt>
-File: mcrsl_archi_widescreen.png Graphic file (type png)
-<use mcrsl_archi_widescreen.png>
-Package pdftex.def Info: mcrsl_archi_widescreen.png  used on input line 79.
-(pdftex.def)             Requested size: 464.39685pt x 261.28802pt.
+<mcrsl_archi_widescreen_nolegend.png, id=14, 1826.825pt x 839.135pt>
+File: mcrsl_archi_widescreen_nolegend.png Graphic file (type png)
+<use mcrsl_archi_widescreen_nolegend.png>
+Package pdftex.def Info: mcrsl_archi_widescreen_nolegend.png  used on input lin
+e 79.
+(pdftex.def)             Requested size: 516.0pt x 237.01765pt.
 
 Underfull \hbox (badness 3138) in paragraph at lines 76--84
 \OT1/ptm/m/n/10 En-coder (iii)Channel Gated fu-sion (iv)Prediction Heads
  []
 
-[2] [3 <../paper/mcrsl_archi_widescreen.png>] [4]
-<figures/hard_samples_gradcam_compare_1col.pdf, id=32, 259.24615pt x 201.7381pt
->
-File: figures/hard_samples_gradcam_compare_1col.pdf Graphic file (type pdf)
-<use figures/hard_samples_gradcam_compare_1col.pdf>
-Package pdftex.def Info: figures/hard_samples_gradcam_compare_1col.pdf  used on
- input line 208.
-(pdftex.def)             Requested size: 252.0pt x 196.10742pt.
- [5 <../paper/figures/hard_samples_gradcam_compare_1col.pdf>]
-Underfull \hbox (badness 2050) in paragraph at lines 327--328
+[2]
+Underfull \vbox (badness 3240) has occurred while \output is active []
+
+ [3 <../paper/mcrsl_archi_widescreen_nolegend.png (PNG copy)>]
+<figures/dataset_samples.pdf, id=27, 262.38025pt x 74.8672pt>
+File: figures/dataset_samples.pdf Graphic file (type pdf)
+<use figures/dataset_samples.pdf>
+Package pdftex.def Info: figures/dataset_samples.pdf  used on input line 151.
+(pdftex.def)             Requested size: 252.0pt x 71.90594pt.
+ [4 <../paper/figures/dataset_samples.pdf>]
+<figures/hard_vs_nonhard_gradcam.pdf, id=62, 259.41656pt x 219.60637pt>
+File: figures/hard_vs_nonhard_gradcam.pdf Graphic file (type pdf)
+<use figures/hard_vs_nonhard_gradcam.pdf>
+Package pdftex.def Info: figures/hard_vs_nonhard_gradcam.pdf  used on input lin
+e 212.
+(pdftex.def)             Requested size: 252.0pt x 213.33289pt.
+ [5 <../paper/figures/hard_vs_nonhard_gradcam.pdf>]
+Underfull \hbox (badness 2050) in paragraph at lines 323--324
 \OT1/ptm/m/n/10 model has per-formed worse on the 28 histopathology-
  []
 
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [6]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -681,19 +686,17 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[7
-
-] (./mcrsl_slides.aux)
+[6] (./mcrsl_slides.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 15178 strings out of 469006
- 312065 string characters out of 5454814
- 718866 words of memory out of 5000000
- 43609 multiletter control sequences out of 15000+600000
+ 15186 strings out of 469006
+ 312332 string characters out of 5454814
+ 719002 words of memory out of 5000000
+ 43617 multiletter control sequences out of 15000+600000
  676887 words of font info for 132 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
  84i,11n,94p,1741b,348s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -701,20 +704,21 @@ Here is how much of TeX's memory you used:
 0.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/c
 mmi10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/
 cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfon
-ts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/ams
-fonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/a
-msfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/pu
-blic/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1
-/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/ty
-pe1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/u
-rw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/t
-imes/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/times/
-utmri8a.pfb>
-Output written on mcrsl_slides.pdf (7 pages, 3541911 bytes).
+ts/cm/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/publi
+c/amsfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
+/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
+1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/ur
+w/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/tim
+es/utmri8a.pfb>
+Output written on mcrsl_slides.pdf (6 pages, 3050827 bytes).
 PDF statistics:
- 162 PDF objects out of 1000 (max. 8388607)
- 73 compressed objects within 1 object stream
+ 193 PDF objects out of 1000 (max. 8388607)
+ 85 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 23 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 28 words of extra memory for PDF output out of 10000 (max. 10000000)
 
