@@ -119,9 +119,9 @@ def main():
         picked = (pick_by_class(lesion_df, image_index_df, True, args.n_simple)
                   + pick_by_class(lesion_df, image_index_df, False, args.n_simple))
         picked = picked[:args.n_simple]
-        fig, axs = plt.subplots(1, len(picked), figsize=(1.45 * len(picked), 1.75))
-        axs = np.atleast_1d(axs)
-        for ax, (r, path, _) in zip(axs, picked):
+        fig, axs = plt.subplots(1, len(picked), squeeze=False,
+                                figsize=(1.45 * len(picked), 1.75))
+        for ax, (r, path, _) in zip(axs[0], picked):
             ax.imshow(Image.open(path).convert("RGB"))
             ax.axis("off")
             ax.set_title(f"{r['unified_diagnosis']}\nq{r['mean_image_rating']:.1f}", fontsize=5.5, pad=1.5)
