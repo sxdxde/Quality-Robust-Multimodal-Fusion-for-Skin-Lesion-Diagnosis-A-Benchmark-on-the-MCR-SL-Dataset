@@ -41,6 +41,9 @@ MCR-SL \cite{mcrsl} has removed that constraint, and is the reason the method pr
 
 This paper has therefore asked two separable questions: whether performance degrades on lower-quality images, and whether the training objective can use the quality signal to improve robustness. The answers have differed, the first a null result and the second a positive one validated by a causal control.
 
+\subsection{Research Gap}
+To the authors' knowledge, no prior work has used a direct expert rating of image quality as a loss-reweighting signal in medical image classification. Quality-aware objectives have relied on estimated proxies, quality-aware medical methods have acted on the architecture rather than the loss, and the closest loss-weighting scheme on skin lesions derives its difficulty signal from the model rather than from a human judgment of the photograph. Section~\ref{sec:lit} substantiates each of these in turn.
+
 \subsection{Contributions}
 This paper has made the following contributions.
 \begin{itemize}
@@ -49,9 +52,6 @@ This paper has made the following contributions.
 \item \textbf{A first published benchmark on MCR-SL:} evaluated under a subject-disjoint stratified five-fold protocol, together with a sweep of eleven follow-up configurations that has isolated which interventions help at this scale and which do not.
 \item \textbf{Six robustness analyses, including three reversed findings:} enabled by MCR-SL's quality ratings and partial histopathology confirmation, and reported together with the three cases in which an apparent positive finding has not survived a control.
 \end{itemize}
-
-\subsection{Research Gap}
-To the authors' knowledge, no prior work has used a direct expert rating of image quality as a loss-reweighting signal in medical image classification. Quality-aware objectives have relied on estimated proxies, quality-aware medical methods have acted on the architecture rather than the loss, and the closest loss-weighting scheme on skin lesions derives its difficulty signal from the model rather than from a human judgment of the photograph. Section~\ref{sec:lit} substantiates each of these in turn.
 
 \section{Literature Review}
 \label{sec:lit}
@@ -96,17 +96,17 @@ Two fusion variants share a common 256-dimensional projection. The late-fusion b
 % metadata path (bottom), left to right
 \node[box] (met) at (0,-1.15) {Patient\\metadata};
 \node[box] (men) at (2.7,-1.15){Embed $+$ MLP};
-\node[gbox](gat) at (5.1,-1.9) {$\sigma(\mathrm{Linear})$ gate};
+\node[gbox](gat) at (5.1,-1.15){$\sigma(\mathrm{Linear})$ gate};
 % quality -> loss
-\node[qbox](qua) at (6.9,-1.15){Quality $q_i$};
+\node[qbox](qua) at (7.2,-1.15){Quality $q_i$};
 \node[lbox](los) at (9.9,-1.15){$w^{\mathrm{cls}}_i w^{\mathrm{qual}}_i\!\times\!$BCE};
 \draw[arr] (img) -- (enc);
 \draw[arr] (enc) -- node[font=\scriptsize,above]{$1280{\times}7{\times}7$} (mul);
 \draw[arr] (mul) -- (pool);
 \draw[arr] (pool) -- (bin);
 \draw[arr] (met) -- (men);
-\draw[arr] (men) -| (gat);
-\draw[arr] (gat) -- (mul);
+\draw[arr] (men) -- (gat);
+\draw[arr] (gat) -- node[font=\scriptsize,right]{1280-d} (mul);
 \draw[arr] (bin) -- (los);
 \draw[arr,dashed] (qua) -- (los);
 \end{tikzpicture}}
@@ -143,7 +143,18 @@ Seven follow-up interventions have additionally been evaluated on the channel-ga
 MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 16 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded, leaving 234 usable; Section~\ref{sec:robustness} traces the further reduction to the 231 used in the analyses.
 
 \subsection{Evaluation Metrics}
-We have reported accuracy, balanced accuracy, macro-averaged F1, sensitivity on the malignant class, specificity, and area under the receiver operating characteristic curve, AUROC, at every shot of evaluation, aggregated across the five test folds as mean and standard deviation. Balanced accuracy has been used for checkpoint selection and as the primary comparison metric, since the malignant class has represented a minority of usable lesions.
+Writing $TP$, $TN$, $FP$ and $FN$ for the counts of correctly and incorrectly classified malignant and non-malignant lesions, the reported metrics are
+\begin{equation}
+\mathrm{Sen}=\frac{TP}{TP+FN},\qquad \mathrm{Spe}=\frac{TN}{TN+FP},
+\end{equation}
+\begin{equation}
+\mathrm{Acc}=\frac{TP+TN}{TP+TN+FP+FN},\qquad
+\mathrm{BAcc}=\frac{\mathrm{Sen}+\mathrm{Spe}}{2},
+\end{equation}
+\begin{equation}
+\text{macro-F1}=\frac{1}{2}\sum_{c\in\{0,1\}}\frac{2\,\mathrm{Pre}_c\,\mathrm{Rec}_c}{\mathrm{Pre}_c+\mathrm{Rec}_c},
+\end{equation}
+together with AUROC, the probability that a randomly drawn malignant lesion receives a higher predicted probability than a randomly drawn non-malignant one. All are aggregated across the five test folds as mean and standard deviation. Balanced accuracy has been used for checkpoint selection and as the primary comparison metric, since accuracy alone is misleading when the malignant class is a $17.9\%$ minority.
 
 \subsection{Existing vs.\ Proposed Methods}
 \label{sec:main}
@@ -152,7 +163,7 @@ Table~\ref{tab:ablation} reports the core ablation at three-decimal precision, s
 The quality-aware variant, which adds an auxiliary head predicting the quality rating, has underperformed on five of six metrics: balanced accuracy 0.740 vs.\ 0.783 and sensitivity 0.578 vs.\ 0.672, against a small specificity gain (0.902 vs.\ 0.895). It has become more conservative, trading a large sensitivity loss for a small specificity gain, the worse direction for cancer screening. This is a negative result for \emph{predicting} quality, and is mechanistically distinct from the reweighting scheme of Section~\ref{sec:qaloss}.
 
 \begin{table}[htbp]
-\caption{Core ablation matrix, mean $\pm$ std over five folds}
+\caption{Core ablation matrix, mean $\pm$ std over five folds. Bold marks the best value in each row}
 \label{tab:ablation}
 \centering
 \scriptsize
@@ -161,12 +172,12 @@ The quality-aware variant, which adds an auxiliary head predicting the quality r
 \hline
 \textbf{Metric} & \textbf{Image-only} & \textbf{Late fusion} & \textbf{Channel-gated} \\
 \hline
-Accuracy & 0.813 $\pm$ 0.020 & 0.831 $\pm$ 0.052 & 0.833 $\pm$ 0.070 \\
-Balanced acc. & 0.784 $\pm$ 0.073 & 0.768 $\pm$ 0.090 & 0.783 $\pm$ 0.085 \\
-Macro F1 & 0.733 $\pm$ 0.038 & 0.743 $\pm$ 0.051 & 0.757 $\pm$ 0.073 \\
-Sensitivity & 0.697 $\pm$ 0.187 & 0.644 $\pm$ 0.191 & 0.672 $\pm$ 0.159 \\
-Specificity & 0.872 $\pm$ 0.061 & 0.891 $\pm$ 0.021 & 0.895 $\pm$ 0.048 \\
-AUROC & 0.895 $\pm$ 0.053 & 0.851 $\pm$ 0.080 & 0.881 $\pm$ 0.065 \\
+Accuracy & 0.813 $\pm$ 0.020 & 0.831 $\pm$ 0.052 & \textbf{0.833 $\pm$ 0.070} \\
+Balanced acc. & \textbf{0.784 $\pm$ 0.073} & 0.768 $\pm$ 0.090 & 0.783 $\pm$ 0.085 \\
+Macro F1 & 0.733 $\pm$ 0.038 & 0.743 $\pm$ 0.051 & \textbf{0.757 $\pm$ 0.073} \\
+Sensitivity & \textbf{0.697 $\pm$ 0.187} & 0.644 $\pm$ 0.191 & 0.672 $\pm$ 0.159 \\
+Specificity & 0.872 $\pm$ 0.061 & 0.891 $\pm$ 0.021 & \textbf{0.895 $\pm$ 0.048} \\
+AUROC & \textbf{0.895 $\pm$ 0.053} & 0.851 $\pm$ 0.080 & 0.881 $\pm$ 0.065 \\
 \hline
 \end{tabular}
 \par\vspace{2pt}\footnotesize Channel-gated, quality-aware variant: accuracy 0.812 $\pm$ 0.068, balanced accuracy 0.740 $\pm$ 0.065, macro F1 0.715 $\pm$ 0.065, sensitivity 0.578 $\pm$ 0.177, specificity 0.902 $\pm$ 0.073, AUROC 0.879 $\pm$ 0.041.
@@ -191,14 +202,14 @@ This paper's channel-gated baseline, \emph{hard\_mining} variant, and best confi
 MCR-SL has had no prior published benchmark, so this result is the current best on it by default; we have avoided framing that as a state-of-the-art claim, since there has been no prior number to surpass, and have emphasized the loss mechanism and its validation (Section~\ref{sec:main}) as the principal contribution.
 
 \subsection{Ablation Study}
-Eleven follow-up configurations have been evaluated. Sharpness-aware minimization with test-time augmentation has reached 0.822, the best of this sweep. Contrastive pretraining, the alternative optimizer, and quality-aware training have each underperformed the baseline, a convergent negative result across three independent interventions, and stacking every promising intervention together has underperformed both the baseline and its components, 0.759 against 0.783 and 0.822.
+Eleven configurations have been evaluated under the identical protocol, each varying one component of the channel-gated method: the loss (focal loss \cite{focal}, the \emph{trust} direction), the input (hair removal and colour normalisation), the objective (a contrastive auxiliary term \cite{supcon}, the quality-regression head), the optimiser (decoupled weight decay with a cosine schedule \cite{adamw}, sharpness-aware minimisation \cite{sam}), and the evaluation (flip-averaged and multi-image test-time averaging), plus four stacked combinations. Sharpness-aware minimisation with test-time augmentation reached 0.822, the best of this sweep. Contrastive pretraining, the alternative optimiser and the quality-regression head each underperformed the baseline, and stacking every promising intervention together reached only 0.759.
 
 Applying the two evaluation-time interventions on top of \emph{hard\_mining}, rather than on top of the plain baseline, has produced this paper's best configuration. Table~\ref{tab:breakdown} decomposes it. Test-time augmentation has raised balanced accuracy to 0.833 and sensitivity to 0.808, the highest sensitivity of any configuration reported here; adding multi-image averaging has raised balanced accuracy further to 0.840 $\pm$ 0.095. Notably, multi-image averaging has stacked cleanly here, whereas it reduced balanced accuracy when combined with sharpness-aware minimization and test-time augmentation in the sweep above; that non-additivity has therefore been specific to that combination rather than a general property of the intervention.
 
 The decomposition matters for how the headline number should be read. Of the total 0.057 gain over the baseline, 0.037, or roughly 65\%, has come from the quality-adaptive loss and has been causally validated in Section~\ref{sec:main}. The remaining 0.020 has come from generic evaluation-time averaging that requires no retraining and has nothing to do with image quality. We state this split explicitly so that the contribution attributable to the proposed mechanism is not overstated by the final figure.
 
 \begin{table}[htbp]
-\caption{Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging}
+\caption{Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging. Bold marks the best value in each column}
 \label{tab:breakdown}
 \centering
 \scriptsize

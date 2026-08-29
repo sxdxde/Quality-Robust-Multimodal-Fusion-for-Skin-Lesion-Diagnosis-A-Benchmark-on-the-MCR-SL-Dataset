@@ -5,7 +5,8 @@
 \citation{metablock,paduf20}
 \citation{mcrsl}
 \@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Contributions}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Research Gap}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-B}}Contributions}{1}{}\protected@file@percent }
 \citation{esteva2017}
 \citation{ham10000}
 \citation{metablock}
@@ -17,7 +18,6 @@
 \citation{se}
 \citation{efficientnet,imagenet}
 \citation{se}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-B}}Research Gap}{2}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {II}Literature Review}{2}{}\protected@file@percent }
 \newlabel{sec:lit}{{II}{2}{}{section.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {III}Proposed Methodology}{2}{}\protected@file@percent }
@@ -42,14 +42,17 @@
 \newlabel{sec:main}{{\mbox  {IV-C}}{3}{}{subsection.4.3}{}}
 \citation{diffmic}
 \citation{ham10000}
-\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds}}{4}{}\protected@file@percent }
+\citation{focal}
+\citation{supcon}
+\citation{adamw}
+\citation{sam}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds. Bold marks the best value in each row}}{4}{}\protected@file@percent }
 \newlabel{tab:ablation}{{I}{4}{}{table.1}{}}
 \newlabel{sec:shuffle}{{\mbox  {IV-C}}{4}{}{table.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Comparison with the Literature}{4}{}\protected@file@percent }
 \newlabel{sec:comparison}{{\mbox  {IV-D}}{4}{}{subsection.4.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Ablation Study}{4}{}\protected@file@percent }
-\citation{adaface,magface}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging}}{5}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging. Bold marks the best value in each column}}{5}{}\protected@file@percent }
 \newlabel{tab:breakdown}{{II}{5}{}{table.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Robustness Analyses}{5}{}\protected@file@percent }
 \newlabel{sec:robustness}{{\mbox  {IV-F}}{5}{}{subsection.4.6}{}}
@@ -57,7 +60,7 @@
 \newlabel{sec:qualitative}{{\mbox  {IV-G}}{5}{}{subsection.4.7}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf  {Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf  {Prediction (baseline)} and \textbf  {Prediction (\emph  {hard\_mining})}, each with its $P(\mathrm  {malignant})$ and outcome. \textbf  {Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{5}{}\protected@file@percent }
 \newlabel{fig:hardsamples}{{2}{5}{}{figure.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{5}{}\protected@file@percent }
+\citation{adaface,magface}
 \citation{deepdrid}
 \bibcite{mcrsl}{1}
 \bibcite{esteva2017}{2}
@@ -77,5 +80,6 @@
 \bibcite{hu2023}{16}
 \bibcite{qgdr}{17}
 \bibcite{deepdrid}{18}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
 \gdef \@abspage@last{6}
