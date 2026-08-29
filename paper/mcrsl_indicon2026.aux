@@ -23,8 +23,6 @@
 \@writefile{toc}{\contentsline {section}{\numberline {III}Proposed Methodology}{2}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Architecture}{2}{}\protected@file@percent }
 \newlabel{sec:arch}{{\mbox  {III-A}}{2}{}{subsection.3.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Channel-gated fusion with quality-adaptive loss reweighting, drawn left to right. The image path (top) and metadata path (bottom) meet at the channel gate $\otimes $, where a metadata-derived sigmoid gate rescales the convolutional feature map channel by channel before pooling. The contribution is the dashed path: each lesion's expert quality rating $q_i$ becomes a fixed scalar coefficient on that sample's loss. It is not a learned parameter and is never differentiated.}}{2}{}\protected@file@percent }
-\newlabel{fig:arch}{{1}{2}{}{figure.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Quality-Adaptive Loss Reweighting}{2}{}\protected@file@percent }
 \newlabel{sec:qaloss}{{\mbox  {III-B}}{2}{}{subsection.3.2}{}}
 \citation{adaface,magface}
@@ -33,34 +31,35 @@
 \citation{adamw}
 \citation{sam}
 \citation{mcrsl}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Channel-gated fusion with quality-adaptive loss reweighting, drawn left to right. The image path (top) and the metadata path (bottom) meet at the channel gate $\otimes $, where a metadata-derived sigmoid gate rescales the convolutional feature map channel by channel before pooling. The paper's contribution is the dashed path: each lesion's expert quality rating $q_i$ becomes a fixed scalar coefficient $w^{\mathrm  {qual}}_i$ on that sample's binary loss. It is a precomputed constant, not a learned parameter, and is never differentiated.}}{3}{}\protected@file@percent }
+\newlabel{fig:arch}{{1}{3}{}{figure.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Training and Evaluation Protocol}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {IV}Experimental Results}{3}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Dataset}{3}{}\protected@file@percent }
 \newlabel{sec:dataset}{{\mbox  {IV-A}}{3}{}{subsection.4.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Evaluation Metrics}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Existing vs.\ Proposed Methods}{3}{}\protected@file@percent }
-\newlabel{sec:main}{{\mbox  {IV-C}}{3}{}{subsection.4.3}{}}
 \citation{diffmic}
 \citation{ham10000}
 \citation{focal}
 \citation{supcon}
 \citation{adamw}
 \citation{sam}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Existing vs.\ Proposed Methods}{4}{}\protected@file@percent }
+\newlabel{sec:main}{{\mbox  {IV-C}}{4}{}{subsection.4.3}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds. Bold marks the best value in each row}}{4}{}\protected@file@percent }
 \newlabel{tab:ablation}{{I}{4}{}{table.1}{}}
 \newlabel{sec:shuffle}{{\mbox  {IV-C}}{4}{}{table.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Comparison with the Literature}{4}{}\protected@file@percent }
 \newlabel{sec:comparison}{{\mbox  {IV-D}}{4}{}{subsection.4.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Ablation Study}{4}{}\protected@file@percent }
+\citation{adaface,magface}
 \@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging. Bold marks the best value in each column}}{5}{}\protected@file@percent }
 \newlabel{tab:breakdown}{{II}{5}{}{table.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Robustness Analyses}{5}{}\protected@file@percent }
 \newlabel{sec:robustness}{{\mbox  {IV-F}}{5}{}{subsection.4.6}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Qualitative Analysis: Hard Samples}{5}{}\protected@file@percent }
 \newlabel{sec:qualitative}{{\mbox  {IV-G}}{5}{}{subsection.4.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf  {Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf  {Prediction (baseline)} and \textbf  {Prediction (\emph  {hard\_mining})}, each with its $P(\mathrm  {malignant})$ and outcome. \textbf  {Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{5}{}\protected@file@percent }
-\newlabel{fig:hardsamples}{{2}{5}{}{figure.2}{}}
-\citation{adaface,magface}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{5}{}\protected@file@percent }
 \citation{deepdrid}
 \bibcite{mcrsl}{1}
 \bibcite{esteva2017}{2}
@@ -80,6 +79,7 @@
 \bibcite{hu2023}{16}
 \bibcite{qgdr}{17}
 \bibcite{deepdrid}{18}
-\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{6}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf  {Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf  {Prediction (baseline)} and \textbf  {Prediction (\emph  {hard\_mining})}, each with its $P(\mathrm  {malignant})$ and outcome. \textbf  {Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{6}{}\protected@file@percent }
+\newlabel{fig:hardsamples}{{2}{6}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
 \gdef \@abspage@last{6}

@@ -158,7 +158,7 @@ reader who adds the tercile Ns will notice the discrepancy and should not have t
 ## Architecture (block-by-block, matches Fig. 1 in the paper and models/*.py)
 
 - **Input** (per forward pass): one dermoscopic image (3×224×224, ImageNet-normalized) +
-  patient metadata (16 categorical + 4 numeric fields, after dropping the constant-valued
+  patient metadata (17 categorical + 4 numeric fields, after dropping the constant-valued
   and unusably sparse free-text fields — see `data/schema.py`'s "explicitly dropped fields"
   note).
   **Training is image-level, not lesion-level** — `config.py:train_on_all_dermoscopic_images`
@@ -179,15 +179,15 @@ reader who adds the tercile Ns will notice the discrepancy and should not have t
   same backbone call.
 
 - **Metadata encoder** (`models/metadata_encoder.py: MetadataEncoder`):
-  - Categorical fields: each field gets its own `nn.Embedding(cardinality+1, 12)`. The "+1"
+  - Categorical fields: each of the 17 gets its own `nn.Embedding(cardinality+1, 12)`. The "+1"
     slot is a reserved "unknown" index for missing/unseen values — routed there, never
     imputed, matching the dataset's own stated missingness policy.
   - Numeric fields: passed through as raw per-field z-scored scalars (mean/std fit on
     train-fold data only), each paired with a 0/1 missingness bit — 2 raw dims per field,
     no embedding.
-  - All categorical embeddings (16 x 12 = 192-d) + numeric (value, missing-bit) pairs
-    (4 x 2 = 8-d) are concatenated (200-d total) and passed through a 2-layer MLP:
-    Linear(200->128) -> ReLU -> Dropout(0.2) -> Linear(128->128) -> ReLU, giving the
+  - All categorical embeddings (17 x 12 = 204-d) + numeric (value, missing-bit) pairs
+    (4 x 2 = 8-d) are concatenated (212-d total) and passed through a 2-layer MLP:
+    Linear(212->128) -> ReLU -> Dropout(0.2) -> Linear(128->128) -> ReLU, giving the
     128-d metadata vector shown in Fig. 1.
 
 - **Fusion** (`models/fusion.py`) — two variants, sharing the same final projection layer:
