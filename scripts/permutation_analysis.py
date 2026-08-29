@@ -104,7 +104,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(3.5, 2.1))
     ax.hist(vals, bins=max(6, min(12, n // 2)), color="0.72", edgecolor="white",
-            label=f"shuffled ratings ($n{=}{n}$)")
+            label="shuffled ratings (n=%d)" % n)
     ax.axvline(base, color="tab:blue", ls=":", lw=1.4,
                label=f"plain baseline ({base:.3f})")
     ax.axvline(real, color="firebrick", lw=1.8,
