@@ -113,6 +113,28 @@ def main():
 
     # Gallery restricted to the diagnosis image of each lesion — the image the
     # experts rated, and the one used at evaluation time.
+    if args.simple:
+        # one representative lesion per diagnosis class, largest classes first,
+        # spanning both malignancy labels so the row is not all nevi
+        picked = (pick_by_class(lesion_df, image_index_df, True, args.n_simple)
+                  + pick_by_class(lesion_df, image_index_df, False, args.n_simple))
+        picked = picked[:args.n_simple]
+        fig, axs = plt.subplots(1, len(picked), figsize=(1.45 * len(picked), 1.75))
+        axs = np.atleast_1d(axs)
+        for ax, (r, path, _) in zip(axs, picked):
+            ax.imshow(Image.open(path).convert("RGB"))
+            ax.axis("off")
+            ax.set_title(f"{r['unified_diagnosis']}\nq{r['mean_image_rating']:.1f}", fontsize=5.5, pad=1.5)
+        fig.tight_layout(pad=0.25)
+        stem = args.out_dir / "dataset_samples"
+        fig.savefig(stem.with_suffix(".pdf"), bbox_inches="tight")
+        fig.savefig(stem.with_suffix(".png"), dpi=400, bbox_inches="tight")
+        plt.close(fig)
+        print("wrote", stem.with_suffix(".pdf"), "(+ .png)")
+        for r, path, _ in picked:
+            print(f"  {r['lesion_id']} {r['unified_diagnosis']} q={r['mean_image_rating']:.1f}")
+        return
+
     mal = pick_by_class(lesion_df, image_index_df, True, N_PER_ROW)
     ben = pick_by_class(lesion_df, image_index_df, False, N_PER_ROW)
     qual = pick_quality_spread(lesion_df, image_index_df, N_PER_ROW)
