@@ -268,6 +268,25 @@ def main():
         sel = sel[keep].reset_index(drop=True)
         if sel.empty:
             raise SystemExit(f"--only {args.only} matched no categories")
+    if args.two_row:
+        # non-hard: both models correct, most confident, preferring higher quality.
+        # hard: baseline wrong and the proposed loss correct -- the cases the mechanism changes.
+        base_oof = pd.read_csv(args.results_dir / f"oof_predictions_{BASELINE_TAG}_qualityFalse.csv")
+        base_oof = base_oof[base_oof["has_binary_label"]][["lesion_id", "pred_prob", "correct"]]
+        base_oof.columns = ["lesion_id", "prob_base", "correct_base"]
+        d = df.merge(base_oof, on="lesion_id", how="inner")
+        d["correct_base"] = d["correct_base"].astype(bool)
+
+        easy = d[d["correct"] & d["correct_base"]].copy()
+        easy["conf"] = (easy["pred_prob"] - 0.5).abs() + (easy["prob_base"] - 0.5).abs()
+        easy = easy.sort_values(["conf", "mean_image_rating"], ascending=[False, False]).head(args.per_row)
+
+        hard = d[(~d["correct_base"]) & d["correct"]].sort_values("mean_image_rating").head(args.per_row)
+        if len(hard) == 0:
+            raise SystemExit("no lesions where the baseline is wrong and the proposed loss correct")
+        sel = pd.concat([easy.assign(row="non-hard"), hard.assign(row="hard")], ignore_index=True)
+        print(f"\nselected {len(easy)} non-hard and {len(hard)} hard examples")
+
     print(f"\nselected {len(sel)} samples:")
     for _, r in sel.iterrows():
         print(f"  [{r['category']:<24}] {r['lesion_id']}  rating={r['mean_image_rating']:.1f} "
@@ -309,25 +328,6 @@ def main():
     # panels per row is illegible, so this layout is one SAMPLE per row:
     # [original | Grad-CAM]. Panels carry only a letter and a short tag; the
     # full per-sample detail belongs in the LaTeX caption and the CSV table.
-    if args.two_row:
-        # non-hard: both models correct, most confident, preferring higher quality.
-        # hard: baseline wrong and the proposed loss correct -- the cases the mechanism changes.
-        base_oof = pd.read_csv(args.results_dir / f"oof_predictions_{BASELINE_TAG}_qualityFalse.csv")
-        base_oof = base_oof[base_oof["has_binary_label"]][["lesion_id", "pred_prob", "correct"]]
-        base_oof.columns = ["lesion_id", "prob_base", "correct_base"]
-        d = df.merge(base_oof, on="lesion_id", how="inner")
-        d["correct_base"] = d["correct_base"].astype(bool)
-
-        easy = d[d["correct"] & d["correct_base"]].copy()
-        easy["conf"] = (easy["pred_prob"] - 0.5).abs() + (easy["prob_base"] - 0.5).abs()
-        easy = easy.sort_values(["conf", "mean_image_rating"], ascending=[False, False]).head(args.per_row)
-
-        hard = d[(~d["correct_base"]) & d["correct"]].sort_values("mean_image_rating").head(args.per_row)
-        if len(hard) == 0:
-            raise SystemExit("no lesions where the baseline is wrong and the proposed loss correct")
-        sel = pd.concat([easy.assign(row="non-hard"), hard.assign(row="hard")], ignore_index=True)
-        print(f"\nselected {len(easy)} non-hard and {len(hard)} hard examples")
-
     if args.two_row:
         n = args.per_row
         fig, axs = plt.subplots(2, n, figsize=(1.75 * n, 4.2), squeeze=False)
