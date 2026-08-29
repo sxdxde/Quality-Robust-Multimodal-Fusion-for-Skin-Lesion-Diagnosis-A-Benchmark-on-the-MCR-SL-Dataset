@@ -42,7 +42,7 @@ MCR-SL \cite{mcrsl} has removed that constraint, and is the reason the method pr
 This paper has therefore asked two separable questions: whether performance degrades on lower-quality images, and whether the training objective can use the quality signal to improve robustness. The answers have differed, the first a null result and the second a positive one validated by a causal control.
 
 \subsection{Research Gap}
-To the authors' knowledge, no prior work has used a direct expert rating of image quality as a loss-reweighting signal in medical image classification. Quality-aware objectives have relied on estimated proxies, quality-aware medical methods have acted on the architecture rather than the loss, and the closest loss-weighting scheme on skin lesions derives its difficulty signal from the model rather than from a human judgment of the photograph. Section~\ref{sec:lit} substantiates each of these in turn.
+No prior work has used a direct expert rating of image quality as a loss-reweighting signal in medical image classification. Quality-aware objectives have relied on estimated proxies, quality-aware medical methods have acted on the architecture rather than the loss, and the closest loss-weighting scheme on skin lesions derives its difficulty signal from the model rather than from a human judgment of the photograph. The literature review that follows substantiates each of these in turn.
 
 \subsection{Contributions}
 This paper has made the following contributions.
@@ -57,7 +57,7 @@ This paper has made the following contributions.
 \label{sec:lit}
 Image-only dermoscopic classification has been studied extensively since Esteva \emph{et al.} \cite{esteva2017} matched dermatologist performance on a curated archive, with HAM10000 \cite{ham10000} becoming a standard benchmark. These studies have treated the image as the sole input.
 
-Metadata fusion is a distinct thread. Pacheco and Krohling \cite{metablock} have proposed the Metadata Processing Block, which reweights image features using patient metadata, evaluated on PAD-UFES-20 \cite{paduf20} (2298 clinical images, 1641 lesions). That dataset is the closest comparator in problem shape and is our primary external reference point (Section~\ref{sec:comparison}).
+Metadata fusion is a distinct thread. Pacheco and Krohling \cite{metablock} have proposed the Metadata Processing Block, which reweights image features using patient metadata, evaluated on PAD-UFES-20 \cite{paduf20} (2298 clinical images, 1641 lesions). That dataset is the closest comparator in problem shape and is our primary external reference point, discussed later.
 
 Quality-aware training has been developed most fully in face recognition. AdaFace \cite{adaface} adapts the angular margin using the feature norm as a quality proxy, reducing emphasis on hard examples when an image is estimated to be low quality, since a degraded and difficult face is likely unidentifiable and forcing separation would fit noise. MagFace \cite{magface} ties feature magnitude to quality similarly. Both depend on an estimated proxy rather than a recorded human judgment.
 
@@ -68,53 +68,28 @@ Closest to this work, Hu and Yang \cite{hu2023} have applied knowledge-based los
 \section{Proposed Methodology}
 Fig.~\ref{fig:arch} summarizes the architecture. This paper has proposed a channel-gated fusion method for cross-modal skin lesion classification and has compared it against two baselines under an identical training and evaluation protocol.
 
-\subsection{Architecture}
+\subsection{Image Encoder}
 \label{sec:arch}
-Fig.~\ref{fig:arch} shows the pipeline left to right, and this subsection follows it in that order. On the upper path, an ImageNet-pretrained EfficientNet-B0 \cite{efficientnet,imagenet} encodes the dermoscopic image, returning both a 1280-dimensional pooled vector and the final convolutional feature map. On the lower path, a metadata encoder embeds seventeen categorical fields (twelve dimensions each, with a reserved index for missing values, which are never imputed) and four numeric fields (z-scored on training-fold statistics only, each paired with a missingness indicator), and passes their 212-dimensional concatenation through a two-layer perceptron to a 128-dimensional vector.
+The upper stream of Fig.~\ref{fig:arch} encodes the dermoscopic image. An ImageNet-pretrained EfficientNet-B0 \cite{efficientnet,imagenet} is trained end to end with no frozen layers, and a single forward pass returns both the final convolutional feature map, of size $1280 \times 7 \times 7$, and its globally average-pooled $1280$-dimensional summary. The feature map is what the fusion stage gates; the pooled vector is used only by the concatenation baseline.
 
-Two fusion variants share a common 256-dimensional projection. The late-fusion baseline concatenates the pooled image and metadata vectors. The channel-gated variant, where the two paths meet at $\otimes$ in Fig.~\ref{fig:arch}, maps the metadata vector through a linear layer and sigmoid to a 1280-dimensional gate, multiplies the feature map channel by channel, and then pools. This is the Squeeze-and-Excitation mechanism \cite{se} conditioned on metadata rather than on the feature map itself, and is used here as an established component rather than claimed as a contribution of this paper. A binary head and a nine-class auxiliary head sit on the fused vector; a third head predicting the quality rating is added only for the quality-aware variant reported as a negative result below.
+\subsection{Metadata Encoder}
+The lower stream encodes patient and lesion context. Seventeen categorical fields each receive their own embedding of twelve dimensions, sized to the field's cardinality plus one reserved index for missing values, so missingness is represented explicitly and never imputed. Four numeric fields are z-scored using training-fold statistics only, and each is paired with a binary indicator recording whether it was present. Concatenating these gives a $212$-dimensional vector, which a two-layer perceptron maps to the $128$-dimensional metadata representation.
 
+\subsection{Channel-Gated Fusion}
+Two fusion variants share a common $256$-dimensional projection. The late-fusion baseline simply concatenates the pooled image vector with the metadata vector. The proposed channel-gated variant, drawn as $\otimes$ in Fig.~\ref{fig:arch}, instead maps the metadata vector through a linear layer and a sigmoid to a $1280$-dimensional gate in $[0,1]$, multiplies the convolutional feature map channel by channel by that gate, and only then pools. Patient context therefore modulates which visual channels survive pooling rather than being appended after it. This is the Squeeze-and-Excitation mechanism \cite{se} conditioned on metadata instead of on the feature map's own statistics, and it is used here as an established component rather than claimed as a contribution.
+
+\subsection{Prediction Heads}
+Two heads operate on the fused $256$-dimensional representation. The binary head is a single linear layer followed by a sigmoid, giving $P(\text{malignant})$, and is the only head whose output is reported as a headline result. A nine-class auxiliary head predicts the unified diagnosis under a class-weighted cross-entropy contributing at $0.4\times$, and is reported as an exploratory table only, since several of its classes contain fewer than ten lesions.
 
 \begin{figure*}[t]
-\centering
-\resizebox{0.98\textwidth}{!}{%
-\begin{tikzpicture}[
-  box/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm, minimum width=2.6cm, font=\small, fill=blue!6},
-  gbox/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm, minimum width=2.6cm, font=\small, fill=orange!14},
-  hbox/.style={draw, rounded corners=2pt, align=center, minimum height=0.9cm, minimum width=2.3cm, font=\small, fill=green!10},
-  lbox/.style={draw, rounded corners=2pt, align=center, minimum height=1.0cm, minimum width=3.0cm, font=\small, fill=red!9, thick},
-  qbox/.style={draw, rounded corners=2pt, align=center, minimum height=0.9cm, minimum width=2.8cm, font=\small, fill=yellow!22},
-  opn/.style={draw, circle, font=\normalsize, inner sep=2pt},
-  arr/.style={-Stealth, thick}
-]
-% ---------- image path (top), strictly left to right ----------
-\node[box] (img)  at (0,1.5)  {Dermoscopic image\\$3{\times}224{\times}224$};
-\node[box] (enc)  at (3.9,1.5){EfficientNet-B0\\encoder};
-\node[opn] (mul)  at (7.3,1.5){$\otimes$};
-\node[box] (pool) at (10.4,1.5){Gated pool\\$+$ Linear/ReLU};
-\node[hbox](bin)  at (14.0,1.5){Binary head};
-% ---------- metadata path (bottom), strictly left to right ----------
-\node[box] (met)  at (0,-1.5) {Patient metadata\\17 categ.\ $+$ 4 num.};
-\node[box] (men)  at (3.9,-1.5){Embeddings $+$ MLP};
-\node[gbox](gat)  at (7.3,-1.5){$\sigma(\mathrm{Linear})$\\gate $\in[0,1]^{1280}$};
-% ---------- quality path -> loss ----------
-\node[qbox](qua)  at (10.4,-1.5){Expert quality $q_i$};
-\node[lbox](los)  at (14.0,-1.5){$\mathcal{L}_i=w^{\mathrm{cls}}_i w^{\mathrm{qual}}_i\!\times\!$BCE};
-\draw[arr] (img) -- (enc);
-\draw[arr] (enc) -- node[font=\scriptsize,above]{$1280{\times}7{\times}7$} (mul);
-\draw[arr] (mul) -- (pool);
-\draw[arr] (pool) -- node[font=\scriptsize,above]{256-d} (bin);
-\draw[arr] (met) -- (men);
-\draw[arr] (men) -- node[font=\scriptsize,above]{128-d} (gat);
-\draw[arr] (gat) -- node[font=\scriptsize,right]{channel gate} (mul);
-\draw[arr] (bin) -- (los);
-\draw[arr,dashed] (qua) -- node[font=\scriptsize,above]{$w^{\mathrm{qual}}_i{=}1.5{-}\tfrac{q_i-1}{9}$} (los);
-\end{tikzpicture}}
-\caption{Channel-gated fusion with quality-adaptive loss reweighting, drawn left to right. The image path (top) and the metadata path (bottom) meet at the channel gate $\otimes$, where a metadata-derived sigmoid gate rescales the convolutional feature map channel by channel before pooling. The paper's contribution is the dashed path: each lesion's expert quality rating $q_i$ becomes a fixed scalar coefficient $w^{\mathrm{qual}}_i$ on that sample's binary loss. It is a precomputed constant, not a learned parameter, and is never differentiated.}
-\label{fig:arch}
+    \centering
+    \includegraphics[width=0.70\textwidth]{mcrsl_archi_widescreen.png}
+    \vspace{-2mm}
+    \caption{Overview of the proposed multimodal architecture and training objective. The image and metadata streams are encoded separately and meet at a metadata-conditioned channel gate, where a sigmoid gate rescales the convolutional feature map channel by channel before global average pooling and projection. The binary and auxiliary prediction heads operate on the resulting 256-dimensional representation. Solid arrows denote the forward data flow, while the red backward path illustrates gradient propagation from the loss through the trainable network components. The expert quality rating enters only through the dashed quality path; $w_i^{\mathrm{qual}}$ is a precomputed constant and is not learned or differentiated.}
+    \label{fig:arch}
 \end{figure*}
 
-\subsection{Quality-Adaptive Loss Reweighting}
+\subsection{Quality-Adaptive Loss}
 \label{sec:qaloss}
 The paper's methodological contribution modifies neither the architecture nor the class of loss function, but the weight each sample carries within the existing objective. Let $q_i \in [1,10]$ be the mean expert quality rating of lesion $i$'s diagnostic image. A per-sample multiplicative weight $w_i^{\mathrm{qual}}$ has been applied alongside the existing per-fold class weight $w_i^{\mathrm{cls}}$:
 \begin{equation}
@@ -127,9 +102,9 @@ Two opposing directions have been evaluated, each mapping the rating range onto 
 \end{align}
 The \emph{trust} direction has treated low-quality images as less reliable and down-weighted them. The \emph{hard\_mining} direction has done the opposite, forcing the model to work harder on degraded images. Lesions without a valid rating have received a neutral weight of 1.0. The range has been fixed rather than searched, and only these two directions have been evaluated, so that the comparison isolates direction rather than magnitude. Nothing unusual happens to the gradient: $w_i^{\mathrm{qual}}$ is a precomputed, non-differentiable scalar coefficient on the loss, not a learned parameter, so gradients propagate through the shared architecture by the standard chain rule from the weighted binary term. The mechanism changes only how much each sample contributes, never what is differentiated.
 
-Only \emph{hard\_mining} has survived validation (Section~\ref{sec:main}), and its direction is the opposite of AdaFace's and MagFace's \cite{adaface,magface}. A plausible domain-specific explanation is that the two settings degrade differently. In face identification a sufficiently degraded photograph can make the identity unrecoverable, so emphasizing such a sample risks fitting noise. In dermoscopy the diagnostic label was in fact assigned from that same image, so the label remains valid and the sample remains an informative hard example.
+Only \emph{hard\_mining} has survived validation, as shown below, and its direction is the opposite of AdaFace's and MagFace's \cite{adaface,magface}. One possible reason is that the two settings degrade differently. In face identification a sufficiently degraded photograph can make the identity unrecoverable, so emphasizing such a sample risks fitting noise. In dermoscopy the diagnostic label was in fact assigned from that same image, so the label remains valid and the sample remains an informative hard example.
 
-This mechanism is distinct from the auxiliary quality-regression head described in Section~\ref{sec:arch}, which has instead asked the model to \emph{predict} the rating as a secondary output. That variant adds a competing objective to a shared representation, whereas reweighting adds no parameters and changes only which samples dominate the gradient. The two are mechanistically different interventions, and the auxiliary head's negative result is reported separately and remains valid; it has not been superseded by the reweighting result.
+This mechanism is distinct from the auxiliary quality-regression head noted earlier, which has instead asked the model to \emph{predict} the rating as a secondary output. That variant adds a competing objective to a shared representation, whereas reweighting adds no parameters and changes only which samples dominate the gradient. The two are mechanistically different interventions, and the auxiliary head's negative result is reported separately and remains valid; it has not been superseded by the reweighting result.
 
 \subsection{Training and Evaluation Protocol}
 Every configuration has been evaluated under subject-disjoint stratified five-fold cross-validation, assigning each subject's lesions to exactly one fold so that no subject or near-duplicate lesion image has appeared in both a training and an evaluation fold. Folds have been balanced by greedily assigning subjects to minimize the difference in malignant lesion count across folds. For each of the five rotations, one fold has been held out as the reported test fold and a second, disjoint fold has been held out purely for checkpoint selection by validation balanced accuracy; the test fold has never influenced model selection, and no hyperparameter has been tuned against final test-fold results.
@@ -140,26 +115,39 @@ Seven follow-up interventions have additionally been evaluated on the channel-ga
 
 \subsection{Dataset}
 \label{sec:dataset}
-MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 16 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded, leaving 234 usable; Section~\ref{sec:robustness} traces the further reduction to the 231 used in the analyses.
+MCR-SL \cite{mcrsl} comprises 240 lesions from 60 subjects, 42 malignant and 192 non-malignant, with 1352 dermoscopic and 779 clinical images, 28 lesions histopathology-confirmed, and 16 categorical plus 4 numeric metadata fields. Six lesions carry an undetermined malignancy label and are excluded, leaving 234 usable; The evaluation study below traces the further reduction to the 231 used in the analyses.
 
 \subsection{Evaluation Metrics}
-Accuracy is the proportion of all lesions classified correctly, sensitivity the proportion of malignant lesions correctly identified, and specificity the proportion of non-malignant lesions correctly cleared. Since accuracy alone is misleading when the malignant class is a $17.9\%$ minority, the primary metric is balanced accuracy, the unweighted mean of the two class-wise rates, reported alongside macro-averaged F1:
-\begin{equation}
-\mathrm{BAcc}=\tfrac{1}{2}\left(\mathrm{Sen}+\mathrm{Spe}\right),
-\end{equation}
+Six metrics are reported for every configuration: accuracy, sensitivity, specificity, macro-averaged F1, balanced accuracy, and the area under the receiver operating characteristic curve (AUROC). Each is aggregated across the five test folds as a mean and standard deviation.
+
+\textbf{Accuracy} is the proportion of all lesions classified correctly. On its own it is a weak summary here, because predicting every lesion non-malignant would already score above $80\%$ at this class balance.
+
+\textbf{Sensitivity} is the proportion of malignant lesions correctly identified. It is the clinically decisive measure, since a missed malignancy is a missed cancer, and it is the metric the proposed loss is intended to improve.
+
+\textbf{Specificity} is the proportion of non-malignant lesions correctly cleared. Low specificity means unnecessary biopsies and avoidable patient anxiety, so it constrains how far sensitivity can be bought.
+
+\textbf{Macro-averaged F1} is the unweighted mean of the per-class harmonic means of precision and recall,
 \begin{equation}
 \text{macro-F1}=\frac{1}{2}\sum_{c\in\{0,1\}}\frac{2\,\mathrm{Pre}_c\,\mathrm{Rec}_c}{\mathrm{Pre}_c+\mathrm{Rec}_c},
 \end{equation}
-where $\mathrm{Pre}_c$ and $\mathrm{Rec}_c$ are precision and recall for class $c$. We also report AUROC, the probability that a randomly drawn malignant lesion receives a higher predicted probability than a randomly drawn non-malignant one. All are aggregated across the five test folds as mean and standard deviation. Balanced accuracy has been used for checkpoint selection and as the primary comparison metric, since accuracy alone is misleading when the malignant class is a $17.9\%$ minority.
+and rewards doing well on both classes rather than on the majority one alone.
+
+\textbf{Balanced accuracy} is the unweighted mean of the two class-wise rates,
+\begin{equation}
+\mathrm{BAcc}=\tfrac{1}{2}\left(\mathrm{Sen}+\mathrm{Spe}\right),
+\end{equation}
+and is used both for checkpoint selection and as the primary comparison metric, since it corrects for the malignant class being a $17.9\%$ minority.
+
+\textbf{AUROC} is the probability that a randomly drawn malignant lesion receives a higher predicted probability than a randomly drawn non-malignant one. It is threshold-independent, so it measures ranking quality separately from where the decision boundary happens to sit.
 
 \subsection{Existing vs.\ Proposed Methods}
 \label{sec:main}
-Table~\ref{tab:ablation} reports the core ablation at three-decimal precision, since several values are too close for two decimals to separate. Channel-gated fusion has reached the highest macro-F1 but has not dominated: the image-only baseline has higher sensitivity (0.697 vs.\ 0.672) and AUROC (0.895 vs.\ 0.881), and its balanced accuracy is effectively tied (0.784 vs.\ 0.783, against a standard deviation of 0.07--0.09). We report this rather than framing it as a clean win for the fusion method.
+This subsection compares the proposed method against the existing approaches internally: every configuration in Table~\ref{tab:ablation} has been trained and evaluated by us under the identical protocol, on the same folds and the same lesions, so the differences are attributable to the method alone. Values are given to three decimals, since several are too close for two decimals to separate. Channel-gated fusion has reached the highest macro-F1 but has not dominated: the image-only baseline has higher sensitivity (0.697 vs.\ 0.672) and AUROC (0.895 vs.\ 0.881), and its balanced accuracy is effectively tied (0.784 vs.\ 0.783, against a standard deviation of 0.07--0.09). We report this rather than framing it as a clean win for the fusion method.
 
-The quality-aware variant, which adds an auxiliary head predicting the quality rating, has underperformed on five of six metrics: balanced accuracy 0.740 vs.\ 0.783 and sensitivity 0.578 vs.\ 0.672, against a small specificity gain (0.902 vs.\ 0.895). It has become more conservative, trading a large sensitivity loss for a small specificity gain, the worse direction for cancer screening. This is a negative result for \emph{predicting} quality, and is mechanistically distinct from the reweighting scheme of Section~\ref{sec:qaloss}.
+The quality-aware variant, which adds an auxiliary head predicting the quality rating, has underperformed on five of six metrics: balanced accuracy 0.740 vs.\ 0.783 and sensitivity 0.578 vs.\ 0.672, against a small specificity gain (0.902 vs.\ 0.895). It has become more conservative, trading a large sensitivity loss for a small specificity gain, the worse direction for cancer screening. This is a negative result for \emph{predicting} quality, and is mechanistically distinct from the reweighting scheme introduced earlier.
 
 \begin{table}[htbp]
-\caption{Core ablation matrix, mean $\pm$ std over five folds. Bold marks the best value in each row}
+\caption{Results of Existing and Proposed Methods (Mean $\pm$ Std, Five Folds). Bold marks the best value in each row}
 \label{tab:ablation}
 \centering
 \scriptsize
@@ -179,7 +167,7 @@ AUROC & \textbf{0.895 $\pm$ 0.053} & 0.851 $\pm$ 0.080 & 0.881 $\pm$ 0.065 \\
 \par\vspace{2pt}\footnotesize Channel-gated, quality-aware variant: accuracy 0.812 $\pm$ 0.068, balanced accuracy 0.740 $\pm$ 0.065, macro F1 0.715 $\pm$ 0.065, sensitivity 0.578 $\pm$ 0.177, specificity 0.902 $\pm$ 0.073, AUROC 0.879 $\pm$ 0.041.
 \end{table}
 
-Both weighting directions of Section~\ref{sec:qaloss} have been trained under the identical protocol, so the loss weighting is the only difference between them and the baseline. The \emph{hard\_mining} direction has improved every core metric: balanced accuracy by 0.037 (0.783 to 0.820), sensitivity by 0.092 (0.672 to 0.764), AUROC by 0.025 (0.881 to 0.906) and accuracy to 0.845, against a small specificity cost (0.895 to 0.875). The sensitivity gain is the clinically weightier one. The \emph{trust} direction is approximately flat on balanced accuracy (0.788) and is not treated as an improvement. Since 0.037 is smaller than the fold-to-fold standard deviation of roughly 0.08, the comparison is underpowered, and we report that plainly: across the five paired folds \emph{hard\_mining} wins three on balanced accuracy (Wilcoxon $p=0.81$) and four on AUROC ($p=0.31$), and on sensitivity wins two while tying three, never losing a fold ($p=0.18$). None approaches significance at $N=5$, so the claim does not rest on this comparison; the control below tests the mechanism causally instead.
+Both weighting directions introduced earlier have been trained under the identical protocol, so the loss weighting is the only difference between them and the baseline. The \emph{hard\_mining} direction has improved every core metric: balanced accuracy by 0.037 (0.783 to 0.820), sensitivity by 0.092 (0.672 to 0.764), AUROC by 0.025 (0.881 to 0.906) and accuracy to 0.845, against a small specificity cost (0.895 to 0.875). The sensitivity gain is the clinically weightier one. The \emph{trust} direction is approximately flat on balanced accuracy (0.788) and is not treated as an improvement. Since 0.037 is smaller than the fold-to-fold standard deviation of roughly 0.08, the comparison is underpowered, and we report that plainly: across the five paired folds \emph{hard\_mining} wins three on balanced accuracy (Wilcoxon $p=0.81$) and four on AUROC ($p=0.31$), and on sensitivity wins two while tying three, never losing a fold ($p=0.18$). None approaches significance at $N=5$, so the claim does not rest on this comparison; the control below tests the mechanism causally instead.
 
 \smallskip\noindent\textbf{Causal validation via a shuffled-quality control.}
 \label{sec:shuffle}
@@ -193,16 +181,35 @@ The control has also been informative negatively. The \emph{trust} variant's one
 
 \subsection{Comparison with the Literature}
 \label{sec:comparison}
-This paper's channel-gated baseline, \emph{hard\_mining} variant, and best configuration have reached 0.783, 0.820 and 0.840 balanced accuracy respectively, against the closest published binary-task work. PAD-UFES-20's six-class balanced accuracies (0.765--0.842) are not valid comparators for a binary task despite the shared metric name. The binary result we have verified directly is Uliana and Krohling's \cite{diffmic}, 0.836 from a diffusion classifier over 2298 images under five-fold cross-validation, at the image level rather than our lesion level. This paper's best configuration has reached 0.840 $\pm$ 0.095. The nominal 0.004 difference is more than twenty times smaller than our own fold-to-fold standard deviation, so the two results are statistically indistinguishable and we have described ours as within noise of that benchmark rather than as exceeding it. The comparison is also not like for like: the two counts differ in unit, our 234 lesions against their 2298 images, and the underlying datasets differ by roughly sevenfold in lesion count and, more consequentially, in class balance, 17.9\% malignant here against 47.5\% there. HAM10000 \cite{ham10000} headline results have reached higher raw accuracy, but on a dermoscopy-only task with no metadata and roughly forty times more training images, and have not been treated as comparable.
+Unlike the internal comparison above, this subsection places the results against work by other authors, trained by them on a different dataset. No configuration here was retrained by us, and there is no shared test set, so Table~\ref{tab:comparison} is context rather than a controlled comparison.
 
-MCR-SL has had no prior published benchmark, so this result is the current best on it by default; we have avoided framing that as a state-of-the-art claim, since there has been no prior number to surpass, and have emphasized the loss mechanism and its validation (Section~\ref{sec:main}) as the principal contribution.
+\begin{table}[htbp]
+\caption{External comparison against the closest published binary-task result. Not a controlled comparison: different dataset, different authors, no shared test set}
+\label{tab:comparison}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Source} & \textbf{Task} & \textbf{$N$} & \textbf{Bal.\ acc.} \\
+\hline
+This paper, channel-gated & binary & 234 lesions & 0.783 \\
+This paper, $+$ \emph{hard\_mining} & binary & 234 lesions & 0.820 \\
+This paper, best configuration & binary & 234 lesions & \textbf{0.840} \\
+\hline
+DiffMIC, PAD-UFES-20 \cite{diffmic} & binary & 2298 images & 0.836 \\
+\hline
+\end{tabular}
+\end{table} PAD-UFES-20's six-class balanced accuracies (0.765--0.842) are not valid comparators for a binary task despite the shared metric name. The binary result we have verified directly is Uliana and Krohling's \cite{diffmic}, 0.836 from a diffusion classifier over 2298 images under five-fold cross-validation, at the image level rather than our lesion level. This paper's best configuration has reached 0.840 $\pm$ 0.095. The nominal 0.004 difference is more than twenty times smaller than our own fold-to-fold standard deviation, so the two results are statistically indistinguishable and we have described ours as within noise of that benchmark rather than as exceeding it. The comparison is also not like for like: the two counts differ in unit, our 234 lesions against their 2298 images, and the underlying datasets differ by roughly sevenfold in lesion count and, more consequentially, in class balance, 17.9\% malignant here against 47.5\% there. HAM10000 \cite{ham10000} headline results have reached higher raw accuracy, but on a dermoscopy-only task with no metadata and roughly forty times more training images, and have not been treated as comparable.
+
+MCR-SL has had no prior published benchmark, so this result is the current best on it by default; we have avoided framing that as a state-of-the-art claim, since there has been no prior number to surpass, and have emphasized the loss mechanism and its shuffled-quality validation as the principal contribution.
 
 \subsection{Ablation Study}
 Eleven configurations have been evaluated under the identical protocol, each varying one component of the channel-gated method: the loss (focal loss \cite{focal}, the \emph{trust} direction), the input (hair removal and colour normalisation), the objective (a contrastive auxiliary term \cite{supcon}, the quality-regression head), the optimiser (decoupled weight decay with a cosine schedule \cite{adamw}, sharpness-aware minimisation \cite{sam}), and the evaluation (flip-averaged and multi-image test-time averaging), plus four stacked combinations. Sharpness-aware minimisation with test-time augmentation reached 0.822, the best of this sweep. Contrastive pretraining, the alternative optimiser and the quality-regression head each underperformed the baseline, and stacking every promising intervention together reached only 0.759.
 
 Applying the two evaluation-time interventions on top of \emph{hard\_mining}, rather than on top of the plain baseline, has produced this paper's best configuration. Table~\ref{tab:breakdown} decomposes it. Test-time augmentation has raised balanced accuracy to 0.833 and sensitivity to 0.808, the highest sensitivity of any configuration reported here; adding multi-image averaging has raised balanced accuracy further to 0.840 $\pm$ 0.095. Notably, multi-image averaging has stacked cleanly here, whereas it reduced balanced accuracy when combined with sharpness-aware minimization and test-time augmentation in the sweep above; that non-additivity has therefore been specific to that combination rather than a general property of the intervention.
 
-The decomposition matters for how the headline number should be read. Of the total 0.057 gain over the baseline, 0.037, or roughly 65\%, has come from the quality-adaptive loss and has been causally validated in Section~\ref{sec:main}. The remaining 0.020 has come from generic evaluation-time averaging that requires no retraining and has nothing to do with image quality. We state this split explicitly so that the contribution attributable to the proposed mechanism is not overstated by the final figure.
+The decomposition matters for how the headline number should be read. Of the total 0.057 gain over the baseline, 0.037, or roughly 65\%, has come from the quality-adaptive loss and has been causally validated by the shuffled-quality control above. The remaining 0.020 has come from generic evaluation-time averaging that requires no retraining and has nothing to do with image quality. We state this split explicitly so that the contribution attributable to the proposed mechanism is not overstated by the final figure.
 
 \begin{table}[htbp]
 \caption{Decomposition of the best configuration. Only the first step uses the quality signal; the remainder is generic evaluation-time averaging. Bold marks the best value in each column}
@@ -224,39 +231,66 @@ $+$ multi-image averaging & no & \textbf{0.840} & $+$0.057 & 0.783 \\
 \end{tabular}
 \end{table}
 
-\subsection{Robustness Analyses}
+\subsection{Evaluation Study}
 \label{sec:robustness}
-These analyses use the channel-gated out-of-fold predictions over the 231 lesions carrying both a prediction and a quality rating; three of the 234 lacked a usable image in their assigned test fold and were excluded rather than imputed.
+These analyses use the channel-gated out-of-fold predictions over the 231 lesions carrying both a prediction and a quality rating; three of the 234 lacked a usable image in their assigned test fold and were excluded rather than imputed. Table~\ref{tab:evalstudy} collects the numbers, and the items below give only the interpretation.
 
-\textbf{Quality-stratified performance.} Terciles by mean expert rating give accuracies of 0.776, 0.914 and 0.868 (low, mid, high; sizes 85, 93, 53, uneven because the mean of up to three integer ratings takes few distinct values). The pattern is not monotonic and Spearman correlation between rating and error is $-0.093$ ($p=0.158$): no strong quality-performance relationship is detected at 231 lesions, neither confirming nor ruling one out.
+\begin{table}[htbp]
+\caption{Evaluation study over the 231 evaluated lesions. Tercile sizes are uneven because the mean of up to three integer ratings takes few distinct values}
+\label{tab:evalstudy}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\multicolumn{4}{|l|}{\textbf{Accuracy by expert quality tercile}} \\
+\hline
+\textbf{Tercile} & \textbf{$N$} & \textbf{Baseline} & \textbf{\emph{hard\_mining}} \\
+\hline
+Low & 85 & 0.776 & 0.776 \\
+Mid & 93 & 0.914 & 0.903 \\
+High & 53 & 0.868 & 0.868 \\
+\hline
+Malignant sensitivity, low tercile & 23 & 0.667 & \textbf{0.810} \\
+\hline
+\multicolumn{4}{|l|}{\textbf{Certainty vs.\ error (Spearman $\rho$)}} \\
+\hline
+\textbf{Stratum} & \textbf{$N$} & \textbf{$\rho$} & \textbf{$p$} \\
+\hline
+Pooled & 231 & $-0.175$ & 0.008 \\
+Non-malignant only & 189 & $-0.127$ & 0.083 \\
+Malignant only & 42 & $-0.093$ & 0.559 \\
+\hline
+\multicolumn{4}{|l|}{\textbf{Ground-truth source and intra-subject consistency}} \\
+\hline
+\textbf{Group} & \textbf{$N$} & \multicolumn{2}{c|}{\textbf{Accuracy}} \\
+\hline
+Histopathology-confirmed & 28 & \multicolumn{2}{c|}{0.750} \\
+Panel-consensus only & 203 & \multicolumn{2}{c|}{0.867} \\
+Consistent subjects (null 29.9) & 55 & \multicolumn{2}{c|}{27, $p=0.954$} \\
+\hline
+\end{tabular}
+\end{table}
 
-The validated \emph{hard\_mining} configuration has not flattened this profile: its high-minus-low accuracy gap has remained 0.091. Its benefit has appeared within terciles instead, most visibly on the lowest-quality one, where malignant sensitivity has risen from 0.667 to 0.810. The mechanism has improved detection on poor images without equalizing accuracy across quality levels, and we have not claimed the latter.
+\textbf{Quality-stratified performance.} The pattern across terciles is not monotonic, and the Spearman correlation between rating and error is $-0.093$ ($p=0.158$), so no strong quality-performance relationship is detected at this sample size, neither confirming nor ruling one out. The validated \emph{hard\_mining} configuration does not flatten the profile either; its benefit appears within terciles, most visibly as a large sensitivity gain on the lowest-quality one.
 
-\textbf{Reversed findings.} Three apparently positive results have not survived scrutiny and are reported rather than omitted. \emph{Trust}'s narrower quality-tercile gap was undercut by the shuffled control narrowing it further (Section~\ref{sec:main}). A pooled correlation between expert certainty and prediction error, initially $\rho=-0.175$ ($p=0.008$, $N=231$), dissolved once stratified by class ($p=0.083$ and $p=0.559$), having reflected class composition rather than an independent relationship. And a proposed change to train on all images per lesion proved on verification to describe what the pipeline already did. At this sample size an uncontrolled first look repeatedly produces positives that controls dissolve, and reporting that pattern is part of the contribution.
+\textbf{Reversed findings.} Three apparently positive results have not survived scrutiny and are reported rather than omitted. \emph{Trust}'s narrower quality-tercile gap was undercut by the shuffled control narrowing it further, as discussed above. The pooled certainty-error correlation dissolves once stratified by class, having reflected class composition rather than an independent relationship. And a proposed change to train on all images per lesion proved on verification to describe what the pipeline already did. At this sample size an uncontrolled first look repeatedly produces positives that controls dissolve, and reporting that pattern is part of the contribution.
 
-\textbf{Intra-subject consistency.} Of 55 subjects with two or more evaluable lesions, 27 were perfectly consistent against a permutation null mean of 29.9 ($p=0.954$), and none had all lesions misclassified: errors have not concentrated in particular patients.
+\textbf{Intra-subject consistency.} Errors do not concentrate in particular patients: fewer subjects are perfectly consistent than the permutation null predicts, and no subject has all of its lesions misclassified.
 
-\textbf{Histopathology-confirmed versus panel-consensus.} The model has performed worse on the 28 histopathology-confirmed lesions than on the 203 panel-consensus-only ones, 0.750 against 0.867 accuracy, plausibly because histopathology is more often ordered for clinically ambiguous lesions. With 28 lesions this has been treated as qualitative only.
+\textbf{Ground-truth source.} The model performs worse on histopathology-confirmed lesions than on panel-consensus ones. A likely explanation is that histopathology is ordered more often for clinically ambiguous lesions, making that subset harder by construction. With 28 lesions this is treated as qualitative only.
 
-
-
-\subsection{Qualitative Analysis: Hard Samples}
-\label{sec:qualitative}
-Gradients have been taken with respect to the feature map \emph{after} the metadata gate, the representation the decision is computed from, with the metadata branch held fixed. Fig.~\ref{fig:hardsamples} compares the baseline and reweighted models on the two lowest-quality malignant lesions the loss has flipped from a miss to a correct call.
-
-In (a), a basal cell carcinoma rated 5.7, the baseline has assigned $P=0.02$, a confident miss, with attention spread diffusely; under reweighting attention contracts onto a single focus and the call becomes $P=0.89$. In (b), a melanoma rated 4.3, baseline attention falls on the left edge away from the pigmented region and the lesion is missed at $P=0.27$; under reweighting attention moves onto the lesion and the call becomes $P=0.89$. Both lie in the lowest quality tercile, where reweighting assigns its largest weights.
-
-These are illustrative rather than representative: across the 231 lesions the reweighting fixes six malignant lesions and breaks two, a net gain of four, which is what a $+0.092$ sensitivity amounts to at this scale.
+\textbf{Qualitative analysis.} Gradients have been taken with respect to the feature map \emph{after} the metadata gate, the representation the decision is computed from, with the metadata branch held fixed. Fig.~\ref{fig:hardsamples} compares the baseline and reweighted models on the two lowest-quality malignant lesions the loss has flipped from a miss to a correct call. In the first, a basal cell carcinoma rated 5.7, baseline attention is spread diffusely and the lesion is confidently missed; under reweighting attention contracts onto a single focus and the call becomes correct. In the second, a melanoma rated 4.3, baseline attention falls on the image edge away from the pigmented region; under reweighting it moves onto the lesion. Both lie in the lowest quality tercile, where reweighting assigns its largest weights. The maps are $7\times7$ upsampled and indicate approximate attention only. These are illustrative rather than representative: across the 231 lesions the reweighting fixes six malignant lesions and breaks two, a net gain of four, which is what a $+0.092$ sensitivity amounts to at this scale.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/hard_samples_gradcam_compare_1col.pdf}
-\caption{Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf{Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf{Prediction (baseline)} and \textbf{Prediction (\emph{hard\_mining})}, each with its $P(\mathrm{malignant})$ and outcome. \textbf{Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times7$ upsampled, indicating approximate attention only.}
+\caption{Grad-CAM on the post-gate feature map for two lesions that quality-adaptive reweighting flips from a miss to a correct call.}
 \label{fig:hardsamples}
 \end{figure}
 
 \section{Conclusion and Future Work}
-This paper has proposed quality-adaptive loss reweighting, scaling each training sample's classification loss by a real expert-assigned rating of its diagnostic image. Up-weighting low-quality samples has improved balanced accuracy by 0.037, sensitivity by 0.092 and AUROC by 0.025 over an identical baseline, and evaluation-time averaging on top has reached 0.840 $\pm$ 0.095; of that 0.057 total gain, 65\% is attributable to the loss and the remainder to generic technique. The validated direction is the opposite of the face recognition precedents that motivated it \cite{adaface,magface}, plausibly because a dermatologist can usually still diagnose from a degraded photograph while a degraded face can lose its identity entirely.
+This paper has proposed quality-adaptive loss reweighting, scaling each training sample's classification loss by a real expert-assigned rating of its diagnostic image. Up-weighting low-quality samples has improved balanced accuracy by 0.037, sensitivity by 0.092 and AUROC by 0.025 over an identical baseline, and evaluation-time averaging on top has reached 0.840 $\pm$ 0.095; of that 0.057 total gain, 65\% is attributable to the loss and the remainder to generic technique. The validated direction is the opposite of the face recognition precedents that motivated it \cite{adaface,magface}, likely because a dermatologist can usually still diagnose from a degraded photograph while a degraded face can lose its identity entirely.
 
 The effect size deserves care. A gain of 0.037 is comparable to the fold-to-fold standard deviation of roughly 0.08, and no paired fold-level test reaches significance at $N=5$. The claim rests instead on the shuffled-quality control: reweighting by permuted ratings returns performance to baseline. We regard causal evidence as the appropriate standard at this scale, and have reported the effect size plainly rather than letting the final figure carry the claim. Two questions have been answered differently: performance shows no significant relationship with expert-rated quality, a null that also held for expert certainty once class composition was controlled, yet the objective has still exploited that signal.
 

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 10:11
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 20:15
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -642,22 +642,26 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 {/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
-] [2] [3] [4]
-Underfull \hbox (badness 2050) in paragraph at lines 239--240
-\OT1/ptm/m/n/10 model has per-formed worse on the 28 histopathology-
+]
+<mcrsl_archi_widescreen.png, id=14, 1826.825pt x 1027.84pt>
+File: mcrsl_archi_widescreen.png Graphic file (type png)
+<use mcrsl_archi_widescreen.png>
+Package pdftex.def Info: mcrsl_archi_widescreen.png  used on input line 86.
+(pdftex.def)             Requested size: 361.19843pt x 203.21182pt.
+ [2] [3 <./mcrsl_archi_widescreen.png>] [4]
+Underfull \hbox (badness 3019) in paragraph at lines 203--204
+[]\OT1/ptm/m/n/10 PAD-UFES-20's six-class bal-anced ac-cu-ra-cies (0.765--
  []
 
-<figures/hard_samples_gradcam_compare_1col.pdf, id=39, 254.02095pt x 201.7381pt
+[5]
+<figures/hard_samples_gradcam_compare_1col.pdf, id=39, 259.24615pt x 201.7381pt
 >
 File: figures/hard_samples_gradcam_compare_1col.pdf Graphic file (type pdf)
 <use figures/hard_samples_gradcam_compare_1col.pdf>
 Package pdftex.def Info: figures/hard_samples_gradcam_compare_1col.pdf  used on
- input line 253.
-(pdftex.def)             Requested size: 252.0pt x 200.1338pt.
-[5]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
+ input line 287.
+(pdftex.def)             Requested size: 252.0pt x 196.10742pt.
+ [6 <./figures/hard_samples_gradcam_compare_1col.pdf>]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -669,47 +673,40 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6 <./figures/hard_samples_gradcam_compare_1col.pdf>] (./mcrsl_indicon2026.aux)
+[7] (./mcrsl_indicon2026.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 15340 strings out of 469006
- 315073 string characters out of 5454814
- 720634 words of memory out of 5000000
- 43768 multiletter control sequences out of 15000+600000
- 678421 words of font info for 138 fonts, out of 8000000 for 9000
+ 15169 strings out of 469006
+ 311968 string characters out of 5454814
+ 715809 words of memory out of 5000000
+ 43603 multiletter control sequences out of 15000+600000
+ 674691 words of font info for 130 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 84i,11n,94p,1746b,838s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,11n,94p,1746b,348s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex1
 0.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/c
 mmi10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/
-cm/cmmi5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfon
-ts/cm/cmmi6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/ams
-fonts/cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/
-amsfonts/cm/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/publ
-ic/amsfonts/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/p
-ublic/amsfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
-1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/font
-s/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fo
-nts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2026basic/texmf-dist/
-fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-d
-ist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2026basic/texm
-f-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/t
-exmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basi
-c/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026b
-asic/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/
-texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texm
-f-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dis
-t/fonts/type1/urw/times/utmri8a.pfb>
-Output written on mcrsl_indicon2026.pdf (6 pages, 2182970 bytes).
+cm/cmmi6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfon
+ts/cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/pu
+blic/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/
+public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/fo
+nts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/t
+ype1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1
+/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/
+times/utmri8a.pfb>
+Output written on mcrsl_indicon2026.pdf (7 pages, 3558904 bytes).
 PDF statistics:
- 202 PDF objects out of 1000 (max. 8388607)
- 95 compressed objects within 1 object stream
+ 172 PDF objects out of 1000 (max. 8388607)
+ 79 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 18 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 23 words of extra memory for PDF output out of 10000 (max. 10000000)
 
