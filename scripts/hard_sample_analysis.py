@@ -188,6 +188,11 @@ def main():
     ap.add_argument("--oof-csv", type=Path,
                     default=Path("results/oof_predictions_channel_gated_qweight_hard_mining.csv"))
     ap.add_argument("--per-category", type=int, default=2)
+    ap.add_argument("--two-row", action="store_true",
+                    help="two-row figure: a row of non-hard (confidently correct) examples above "
+                         "a row of hard examples the loss flips; every panel labelled with the "
+                         "ground truth and BOTH models' predictions")
+    ap.add_argument("--per-row", type=int, default=3, help="examples per row for --two-row")
     ap.add_argument("--lesions", nargs="*", default=None,
                     help="explicit lesion_ids to show, in this order, bypassing category selection "
                          "(e.g. cases the loss reweighting flipped from wrong to right)")
@@ -304,6 +309,62 @@ def main():
     # panels per row is illegible, so this layout is one SAMPLE per row:
     # [original | Grad-CAM]. Panels carry only a letter and a short tag; the
     # full per-sample detail belongs in the LaTeX caption and the CSV table.
+    if args.two_row:
+        # non-hard: both models correct, most confident, preferring higher quality.
+        # hard: baseline wrong and the proposed loss correct -- the cases the mechanism changes.
+        base_oof = pd.read_csv(args.results_dir / f"oof_predictions_{BASELINE_TAG}_qualityFalse.csv")
+        base_oof = base_oof[base_oof["has_binary_label"]][["lesion_id", "pred_prob", "correct"]]
+        base_oof.columns = ["lesion_id", "prob_base", "correct_base"]
+        d = df.merge(base_oof, on="lesion_id", how="inner")
+        d["correct_base"] = d["correct_base"].astype(bool)
+
+        easy = d[d["correct"] & d["correct_base"]].copy()
+        easy["conf"] = (easy["pred_prob"] - 0.5).abs() + (easy["prob_base"] - 0.5).abs()
+        easy = easy.sort_values(["conf", "mean_image_rating"], ascending=[False, False]).head(args.per_row)
+
+        hard = d[(~d["correct_base"]) & d["correct"]].sort_values("mean_image_rating").head(args.per_row)
+        if len(hard) == 0:
+            raise SystemExit("no lesions where the baseline is wrong and the proposed loss correct")
+        sel = pd.concat([easy.assign(row="non-hard"), hard.assign(row="hard")], ignore_index=True)
+        print(f"\nselected {len(easy)} non-hard and {len(hard)} hard examples")
+
+    if args.two_row:
+        n = args.per_row
+        fig, axs = plt.subplots(2, n, figsize=(1.75 * n, 4.2), squeeze=False)
+        for ax in axs.ravel():
+            ax.axis("off")
+        for idx, (_, r) in enumerate(sel.iterrows()):
+            row, col = (0, idx) if r["row"] == "non-hard" else (1, idx - len(sel[sel["row"] == "non-hard"]))
+            if col >= n:
+                continue
+            cam, prob = cams[HARD_MINING_TAG][idx]
+            cam_up = np.array(Image.fromarray((cam * 255).astype(np.uint8))
+                              .resize((args.image_size, args.image_size), Image.BILINEAR)) / 255.0
+            axs[row][col].imshow(displays[idx])
+            axs[row][col].imshow(cam_up, cmap="jet", alpha=0.42)
+            gt = "malignant" if r["binary_label"] == 1 else "benign"
+            pb = "malignant" if r["prob_base"] >= 0.5 else "benign"
+            pp = "malignant" if prob >= 0.5 else "benign"
+            axs[row][col].set_title(
+                f"GT: {r['unified_diagnosis']} ({gt})\n"
+                f"Baseline: {pb} P={r['prob_base']:.2f}\n"
+                f"Proposed: {pp} P={prob:.2f}",
+                fontsize=4.9, pad=2,
+                color="darkgreen" if (prob >= 0.5) == (r["binary_label"] == 1) else "firebrick")
+        axs[0][0].text(-0.14, 0.5, "NON-HARD", transform=axs[0][0].transAxes, rotation=90,
+                       va="center", ha="center", fontsize=6.5, fontweight="bold")
+        axs[1][0].text(-0.14, 0.5, "HARD", transform=axs[1][0].transAxes, rotation=90,
+                       va="center", ha="center", fontsize=6.5, fontweight="bold")
+        fig.tight_layout(pad=0.3)
+        fig.subplots_adjust(hspace=0.55)
+        out_fig = args.results_dir / "hard_vs_nonhard_gradcam.pdf"
+        fig.savefig(out_fig, dpi=600, bbox_inches="tight")
+        fig.savefig(out_fig.with_suffix(".png"), dpi=600, bbox_inches="tight")
+        plt.close(fig)
+        print(f"\nwrote {out_fig} (+ .png)")
+        print(f"wrote {_write_table(sel, args.results_dir)}")
+        return
+
     if args.single_column and args.compare_baseline:
         n = len(sel)
         fig, axs = plt.subplots(n, 3, figsize=(3.5, 1.30 * n), squeeze=False)
