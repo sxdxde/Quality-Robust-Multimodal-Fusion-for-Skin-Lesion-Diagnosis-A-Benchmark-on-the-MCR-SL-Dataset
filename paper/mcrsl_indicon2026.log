@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 01:55
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 09:47
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -642,20 +642,32 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 {/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
-] [2] [3] [4]
-Underfull \hbox (badness 2050) in paragraph at lines 258--259
+] [2] [3]
+<figures/permutation_hist_balanced_accuracy.pdf, id=32, 261.92918pt x 161.12512
+pt>
+File: figures/permutation_hist_balanced_accuracy.pdf Graphic file (type pdf)
+<use figures/permutation_hist_balanced_accuracy.pdf>
+Package pdftex.def Info: figures/permutation_hist_balanced_accuracy.pdf  used o
+n input line 187.
+(pdftex.def)             Requested size: 252.0pt x 155.0201pt.
+
+Underfull \hbox (badness 2875) in paragraph at lines 201--202
+[]\OT1/ptm/m/n/10 Eleven follow-up con-fig-u-ra-tions have been eval-u-ated.
+ []
+
+[4 <./figures/permutation_hist_balanced_accuracy.pdf>]
+Underfull \hbox (badness 2050) in paragraph at lines 239--240
 \OT1/ptm/m/n/10 model has per-formed worse on the 28 histopathology-
  []
 
-[5]
-<figures/hard_samples_gradcam_compare_1col.pdf, id=41, 252.6323pt x 200.31918pt
+<figures/hard_samples_gradcam_compare_1col.pdf, id=76, 252.6323pt x 200.31918pt
 >
 File: figures/hard_samples_gradcam_compare_1col.pdf Graphic file (type pdf)
 <use figures/hard_samples_gradcam_compare_1col.pdf>
 Package pdftex.def Info: figures/hard_samples_gradcam_compare_1col.pdf  used on
- input line 272.
+ input line 253.
 (pdftex.def)             Requested size: 252.0pt x 199.82045pt.
-
+[5]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -674,39 +686,36 @@ L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 15352 strings out of 469006
- 315315 string characters out of 5454814
- 723496 words of memory out of 5000000
- 43780 multiletter control sequences out of 15000+600000
+ 15345 strings out of 469006
+ 315392 string characters out of 5454814
+ 718401 words of memory out of 5000000
+ 43773 multiletter control sequences out of 15000+600000
  678421 words of font info for 138 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 84i,11n,94p,1746b,840s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,11n,94p,1766b,834s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi1
 0.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/c
-mmi5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/c
-m/cmmi6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfont
-s/cm/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsf
-onts/cm/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/a
-msfonts/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/publi
-c/amsfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/pu
-blic/amsfonts/cm/cmr5.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/
-public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
-1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2026basic/texmf-dist/font
-s/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/
-fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/local/texlive/2026basic/texmf-di
-st/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf
--dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/te
-xmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic
-/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texm
-f-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-di
-st/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fo
-nts/type1/urw/times/utmri8a.pfb>
-Output written on mcrsl_indicon2026.pdf (6 pages, 2118827 bytes).
+mmi6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/c
+m/cmmi7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmmi8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmmi9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmr10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/publi
+c/amsfonts/cm/cmr6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr7.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmr8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2026basic/texmf-dist/fo
+nts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist
+/fonts/type1/public/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2026basic/texmf-d
+ist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/f
+onts/type1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
+/type1/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
+1/urw/times/utmri8a.pfb>
+Output written on mcrsl_indicon2026.pdf (6 pages, 2099828 bytes).
 PDF statistics:
- 190 PDF objects out of 1000 (max. 8388607)
- 92 compressed objects within 1 object stream
+ 216 PDF objects out of 1000 (max. 8388607)
+ 88 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 18 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 23 words of extra memory for PDF output out of 10000 (max. 10000000)
 

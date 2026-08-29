@@ -1,0 +1,14 @@
+metric,n_permutations,real,plain_baseline,null_mean,null_sd,null_min,null_max,n_null_ge_real,empirical_p,z_vs_null
+balanced_accuracy,10,0.8195,0.7834,0.7784,0.0166,0.7569,0.8167,0,0.0909,2.47
+
+permutation_seed,balanced_accuracy
+1,0.7587
+2,0.7840
+3,0.7812
+4,0.8167
+5,0.7667
+6,0.7569
+7,0.7878
+8,0.7674
+9,0.7857
+10,0.7789
