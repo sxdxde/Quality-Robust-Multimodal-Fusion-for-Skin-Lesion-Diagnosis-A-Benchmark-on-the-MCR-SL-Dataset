@@ -123,12 +123,12 @@ def main():
         picked = (pick_by_class(lesion_df, image_index_df, True, args.n_simple)
                   + pick_by_class(lesion_df, image_index_df, False, args.n_simple))
         picked = picked[:args.n_simple]
-        fig, axs = plt.subplots(1, len(picked), squeeze=False,
-                                figsize=(1.45 * len(picked), 1.75))
+        # Canvas sized to the IEEE column so LaTeX does not scale the labels down.
+        fig, axs = plt.subplots(1, len(picked), squeeze=False, figsize=(3.5, 1.05))
         for ax, (r, path, _) in zip(axs[0], picked):
             ax.imshow(Image.open(path).convert("RGB"))
             ax.axis("off")
-            ax.set_title(f"{r['unified_diagnosis']}\nq{r['mean_image_rating']:.1f}", fontsize=5.5, pad=1.5)
+            ax.set_title(f"{r['unified_diagnosis']}\nq{r['mean_image_rating']:.1f}", fontsize=6.0, pad=1.5)
         fig.tight_layout(pad=0.25)
         stem = args.out_dir / "dataset_samples"
         fig.savefig(stem.with_suffix(".pdf"), bbox_inches="tight")

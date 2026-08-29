@@ -331,7 +331,10 @@ def main():
     # full per-sample detail belongs in the LaTeX caption and the CSV table.
     if args.two_row:
         n = args.per_row
-        fig, axs = plt.subplots(2, n, figsize=(1.75 * n, 4.2), squeeze=False)
+        # Canvas sized to the IEEE column (3.5in) so LaTeX includes it at scale 1:1.
+        # Anything wider gets shrunk by \includegraphics and takes the panel text
+        # down with it — at 5.25in wide the 4.9pt titles printed at ~2.9pt.
+        fig, axs = plt.subplots(2, n, figsize=(3.5, 2.85), squeeze=False)
         for ax in axs.ravel():
             ax.axis("off")
         for idx, (_, r) in enumerate(sel.iterrows()):
@@ -343,19 +346,19 @@ def main():
                               .resize((args.image_size, args.image_size), Image.BILINEAR)) / 255.0
             axs[row][col].imshow(displays[idx])
             axs[row][col].imshow(cam_up, cmap="jet", alpha=0.42)
-            gt = "malignant" if r["binary_label"] == 1 else "benign"
-            pb = "malignant" if r["prob_base"] >= 0.5 else "benign"
-            pp = "malignant" if prob >= 0.5 else "benign"
+            gt = "mal." if r["binary_label"] == 1 else "ben."
+            pb = "mal." if r["prob_base"] >= 0.5 else "ben."
+            pp = "mal." if prob >= 0.5 else "ben."
             axs[row][col].set_title(
                 f"GT: {r['unified_diagnosis']} ({gt})\n"
-                f"Baseline: {pb} P={r['prob_base']:.2f}\n"
-                f"Proposed: {pp} P={prob:.2f}",
-                fontsize=4.9, pad=2,
+                f"Baseline: {pb} {r['prob_base']:.2f}\n"
+                f"Proposed: {pp} {prob:.2f}",
+                fontsize=6.0, pad=2,
                 color="darkgreen" if (prob >= 0.5) == (r["binary_label"] == 1) else "firebrick")
         axs[0][0].text(-0.14, 0.5, "NON-HARD", transform=axs[0][0].transAxes, rotation=90,
-                       va="center", ha="center", fontsize=6.5, fontweight="bold")
+                       va="center", ha="center", fontsize=7, fontweight="bold")
         axs[1][0].text(-0.14, 0.5, "HARD", transform=axs[1][0].transAxes, rotation=90,
-                       va="center", ha="center", fontsize=6.5, fontweight="bold")
+                       va="center", ha="center", fontsize=7, fontweight="bold")
         fig.tight_layout(pad=0.3)
         fig.subplots_adjust(hspace=0.55)
         out_fig = args.results_dir / "hard_vs_nonhard_gradcam.pdf"
