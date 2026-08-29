@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 09:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 09:55
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -643,31 +643,26 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 
 ] [2] [3]
-<figures/permutation_hist_balanced_accuracy.pdf, id=32, 261.92918pt x 161.12512
-pt>
-File: figures/permutation_hist_balanced_accuracy.pdf Graphic file (type pdf)
-<use figures/permutation_hist_balanced_accuracy.pdf>
-Package pdftex.def Info: figures/permutation_hist_balanced_accuracy.pdf  used o
-n input line 187.
-(pdftex.def)             Requested size: 252.0pt x 155.0201pt.
-
-Underfull \hbox (badness 2875) in paragraph at lines 201--202
+Underfull \hbox (badness 2875) in paragraph at lines 194--195
 []\OT1/ptm/m/n/10 Eleven follow-up con-fig-u-ra-tions have been eval-u-ated.
  []
 
-[4 <./figures/permutation_hist_balanced_accuracy.pdf>]
-Underfull \hbox (badness 2050) in paragraph at lines 239--240
+[4]
+Underfull \hbox (badness 2050) in paragraph at lines 232--233
 \OT1/ptm/m/n/10 model has per-formed worse on the 28 histopathology-
  []
 
-<figures/hard_samples_gradcam_compare_1col.pdf, id=76, 252.6323pt x 200.31918pt
+
+Underfull \vbox (badness 1205) has occurred while \output is active []
+
+<figures/hard_samples_gradcam_compare_1col.pdf, id=35, 254.02095pt x 201.7381pt
 >
 File: figures/hard_samples_gradcam_compare_1col.pdf Graphic file (type pdf)
 <use figures/hard_samples_gradcam_compare_1col.pdf>
 Package pdftex.def Info: figures/hard_samples_gradcam_compare_1col.pdf  used on
- input line 253.
-(pdftex.def)             Requested size: 252.0pt x 199.82045pt.
-[5]
+ input line 246.
+(pdftex.def)             Requested size: 252.0pt x 200.1338pt.
+ [5 <./figures/hard_samples_gradcam_compare_1col.pdf>]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -679,20 +674,20 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6 <./figures/hard_samples_gradcam_compare_1col.pdf>] (./mcrsl_indicon2026.aux)
+[6] (./mcrsl_indicon2026.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 15345 strings out of 469006
- 315392 string characters out of 5454814
- 718401 words of memory out of 5000000
- 43773 multiletter control sequences out of 15000+600000
+ 15337 strings out of 469006
+ 314988 string characters out of 5454814
+ 720379 words of memory out of 5000000
+ 43765 multiletter control sequences out of 15000+600000
  678421 words of font info for 138 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 84i,11n,94p,1766b,834s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,11n,94p,1746b,834s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi1
 0.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/c
 mmi6.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/c
@@ -712,10 +707,10 @@ ist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texmf-dist/f
 onts/type1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
 /type1/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type
 1/urw/times/utmri8a.pfb>
-Output written on mcrsl_indicon2026.pdf (6 pages, 2099828 bytes).
+Output written on mcrsl_indicon2026.pdf (6 pages, 2140393 bytes).
 PDF statistics:
- 216 PDF objects out of 1000 (max. 8388607)
- 88 compressed objects within 1 object stream
+ 182 PDF objects out of 1000 (max. 8388607)
+ 83 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 23 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 18 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -45,8 +45,6 @@
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Core ablation matrix, mean $\pm $ std over five folds}}{4}{}\protected@file@percent }
 \newlabel{tab:ablation}{{I}{4}{}{table.1}{}}
 \newlabel{sec:shuffle}{{\mbox  {IV-C}}{4}{}{table.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Permutation test for the quality signal. Grey: balanced accuracy when the lesion-to-rating assignment is permuted within each training fold, preserving the weight distribution exactly. Dotted: the plain baseline, which the null distribution is centred on. Solid: the real ratings, above every permutation drawn.}}{4}{}\protected@file@percent }
-\newlabel{fig:perm}{{2}{4}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Comparison with the Literature}{4}{}\protected@file@percent }
 \newlabel{sec:comparison}{{\mbox  {IV-D}}{4}{}{subsection.4.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Ablation Study}{4}{}\protected@file@percent }
@@ -57,6 +55,8 @@
 \newlabel{sec:robustness}{{\mbox  {IV-F}}{5}{}{subsection.4.6}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}Qualitative Analysis: Hard Samples}{5}{}\protected@file@percent }
 \newlabel{sec:qualitative}{{\mbox  {IV-G}}{5}{}{subsection.4.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf  {Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf  {Prediction (baseline)} and \textbf  {Prediction (\emph  {hard\_mining})}, each with its $P(\mathrm  {malignant})$ and outcome. \textbf  {Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{5}{}\protected@file@percent }
+\newlabel{fig:hardsamples}{{2}{5}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion and Future Work}{5}{}\protected@file@percent }
 \citation{deepdrid}
 \bibcite{mcrsl}{1}
@@ -77,7 +77,5 @@
 \bibcite{hu2023}{16}
 \bibcite{qgdr}{17}
 \bibcite{deepdrid}{18}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Grad-CAM on the post-gate feature map for the two lowest-quality lesions that quality-adaptive reweighting has flipped from a miss to a correct call. Left column: \textbf  {Input} (the diagnostic image), with expert quality rating $q$. Centre and right: \textbf  {Prediction (baseline)} and \textbf  {Prediction (\emph  {hard\_mining})}, each with its $P(\mathrm  {malignant})$ and outcome. \textbf  {Ground Truth} is malignant for both: (a) basal cell carcinoma, (b) melanoma. Maps are $7\times 7$ upsampled, indicating approximate attention only.}}{6}{}\protected@file@percent }
-\newlabel{fig:hardsamples}{{3}{6}{}{figure.3}{}}
 \@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
 \gdef \@abspage@last{6}
