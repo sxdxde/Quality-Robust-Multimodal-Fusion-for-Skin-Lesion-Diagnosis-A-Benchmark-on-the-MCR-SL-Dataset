@@ -311,9 +311,11 @@ def main():
             ax.axis("off")
         for i, (_, r) in enumerate(sel.iterrows()):
             axs[i][0].imshow(displays[i])
+            gt_cls = r["unified_diagnosis"]
+            gt_bin = "malignant" if r["binary_label"] == 1 else "benign"
             axs[i][0].set_title(
-                f"({chr(97+i)}) Input · {r['unified_diagnosis']} · q{r['mean_image_rating']:.1f}\n"
-                f"Ground Truth: {'MALIGNANT' if r['binary_label'] == 1 else 'benign'}",
+                f"({chr(97+i)}) Input · q{r['mean_image_rating']:.1f}\n"
+                f"Ground Truth: {gt_cls} ({gt_bin})",
                 fontsize=5.4, pad=2)
             for k, (tag, label) in enumerate(models_to_run, start=1):
                 cam, prob = cams[tag][i]
@@ -322,7 +324,8 @@ def main():
                 axs[i][k].imshow(displays[i])
                 axs[i][k].imshow(cam_up, cmap="jet", alpha=0.45)
                 ok = (prob >= 0.5) == (r["binary_label"] == 1)
-                axs[i][k].set_title(f"Prediction ({label})\nP={prob:.2f} · {'correct' if ok else 'MISSED'}",
+                pred_bin = "malignant" if prob >= 0.5 else "benign"
+                axs[i][k].set_title(f"Predicted ({label})\n{pred_bin}, P={prob:.2f}",
                                     fontsize=5.4, pad=2,
                                     color="darkgreen" if ok else "firebrick")
         fig.tight_layout(pad=0.25)
