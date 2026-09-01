@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  29 AUG 2026 23:42
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.4.5)  31 AUG 2026 18:33
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -664,17 +664,18 @@ File: figures/dataset_samples.pdf Graphic file (type pdf)
 Package pdftex.def Info: figures/dataset_samples.pdf  used on input line 151.
 (pdftex.def)             Requested size: 252.0pt x 71.90594pt.
  [4 <../paper/figures/dataset_samples.pdf>]
-<figures/hard_vs_nonhard_gradcam.pdf, id=62, 259.41656pt x 219.60637pt>
+<figures/hard_vs_nonhard_gradcam.pdf, id=62, 252.72536pt x 239.53615pt>
 File: figures/hard_vs_nonhard_gradcam.pdf Graphic file (type pdf)
 <use figures/hard_vs_nonhard_gradcam.pdf>
 Package pdftex.def Info: figures/hard_vs_nonhard_gradcam.pdf  used on input lin
-e 212.
-(pdftex.def)             Requested size: 252.0pt x 213.33289pt.
+e 233.
+(pdftex.def)             Requested size: 252.0pt x 238.85205pt.
  [5 <../paper/figures/hard_vs_nonhard_gradcam.pdf>]
-Underfull \hbox (badness 2050) in paragraph at lines 323--324
+Underfull \hbox (badness 2050) in paragraph at lines 351--352
 \OT1/ptm/m/n/10 model has per-formed worse on the 28 histopathology-
  []
 
+[6]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -686,18 +687,20 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6] (./mcrsl_slides.aux)
+[7
+
+] (./mcrsl_slides.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 15186 strings out of 469006
- 312332 string characters out of 5454814
- 719002 words of memory out of 5000000
+ 15184 strings out of 469006
+ 312320 string characters out of 5454814
+ 720738 words of memory out of 5000000
  43617 multiletter control sequences out of 15000+600000
- 676887 words of font info for 132 fonts, out of 8000000 for 9000
+ 674702 words of font info for 130 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
  84i,11n,94p,1741b,348s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex1
@@ -715,9 +718,9 @@ pe1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2026basic/texmf-dist/fonts
 1/urw/times/utmbi8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/ur
 w/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dist/fonts/type1/urw/tim
 es/utmri8a.pfb>
-Output written on mcrsl_slides.pdf (6 pages, 3050827 bytes).
+Output written on mcrsl_slides.pdf (7 pages, 3018519 bytes).
 PDF statistics:
- 193 PDF objects out of 1000 (max. 8388607)
+ 191 PDF objects out of 1000 (max. 8388607)
  85 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  28 words of extra memory for PDF output out of 10000 (max. 10000000)

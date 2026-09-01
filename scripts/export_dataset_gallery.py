@@ -123,6 +123,9 @@ def main():
         picked = (pick_by_class(lesion_df, image_index_df, True, args.n_simple)
                   + pick_by_class(lesion_df, image_index_df, False, args.n_simple))
         picked = picked[:args.n_simple]
+        # Left-to-right in ascending quality, so the row itself reads as the
+        # quality gradient the paper's loss is built on.
+        picked.sort(key=lambda t: t[0]["mean_image_rating"])
         # Canvas sized to the IEEE column so LaTeX does not scale the labels down.
         fig, axs = plt.subplots(1, len(picked), squeeze=False, figsize=(3.5, 1.05))
         for ax, (r, path, _) in zip(axs[0], picked):

@@ -334,7 +334,7 @@ def main():
         # Canvas sized to the IEEE column (3.5in) so LaTeX includes it at scale 1:1.
         # Anything wider gets shrunk by \includegraphics and takes the panel text
         # down with it — at 5.25in wide the 4.9pt titles printed at ~2.9pt.
-        fig, axs = plt.subplots(2, n, figsize=(3.5, 2.85), squeeze=False)
+        fig, axs = plt.subplots(2, n, figsize=(3.5, 3.45), squeeze=False)
         for ax in axs.ravel():
             ax.axis("off")
         for idx, (_, r) in enumerate(sel.iterrows()):
@@ -349,18 +349,32 @@ def main():
             gt = "mal." if r["binary_label"] == 1 else "ben."
             pb = "mal." if r["prob_base"] >= 0.5 else "ben."
             pp = "mal." if prob >= 0.5 else "ben."
-            axs[row][col].set_title(
-                f"GT: {r['unified_diagnosis']} ({gt})\n"
-                f"Baseline: {pb} {r['prob_base']:.2f}\n"
-                f"Proposed: {pp} {prob:.2f}",
-                fontsize=6.0, pad=2,
-                color="darkgreen" if (prob >= 0.5) == (r["binary_label"] == 1) else "firebrick")
-        axs[0][0].text(-0.14, 0.5, "NON-HARD", transform=axs[0][0].transAxes, rotation=90,
-                       va="center", ha="center", fontsize=7, fontweight="bold")
-        axs[1][0].text(-0.14, 0.5, "HARD", transform=axs[1][0].transAxes, rotation=90,
-                       va="center", ha="center", fontsize=7, fontweight="bold")
+            truth = r["binary_label"] == 1
+            # One text artist per line, so each model's line can carry its own
+            # colour: green where that model is right, red where it is wrong.
+            # set_title cannot do this — it colours the whole string at once.
+            lines = [
+                (f"GT: {r['unified_diagnosis']} ({gt})", "black"),
+                (f"quality {r['mean_image_rating']:.1f}/10", "black"),
+                (f"Baseline: {pb} {r['prob_base']:.2f}",
+                 "darkgreen" if (r["prob_base"] >= 0.5) == truth else "firebrick"),
+                (f"Proposed: {pp} {prob:.2f}",
+                 "darkgreen" if (prob >= 0.5) == truth else "firebrick"),
+            ]
+            for k, (txt, colour) in enumerate(lines):
+                axs[row][col].text(0.5, 1.42 - 0.125 * k, txt,
+                                   transform=axs[row][col].transAxes,
+                                   ha="center", va="bottom", fontsize=6.0, color=colour)
         fig.tight_layout(pad=0.3)
-        fig.subplots_adjust(hspace=0.55)
+        fig.subplots_adjust(hspace=0.86)
+        # Spell out what the two model names mean once, below the panels, rather
+        # than per panel — a panel column is only ~1.1in wide and cannot carry
+        # "(without quality-adaptive loss)" at a legible size. It sits at the
+        # bottom because the top is already occupied by the first row's labels.
+        fig.text(0.5, -0.012,
+                 "Baseline = without quality-adaptive loss     "
+                 "Proposed = with quality-adaptive loss",
+                 ha="center", va="top", fontsize=6.2)
         out_fig = args.results_dir / "hard_vs_nonhard_gradcam.pdf"
         fig.savefig(out_fig, dpi=600, bbox_inches="tight")
         fig.savefig(out_fig.with_suffix(".png"), dpi=600, bbox_inches="tight")

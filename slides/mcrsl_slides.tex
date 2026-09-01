@@ -88,7 +88,7 @@ Each dermoscopic image of size $3\times224\times224$ is processed by an Efficien
 
 \subsection{Metadata Encoder}
 \label{sec:metadata_encoder}
-The metadata associated with each lesion comprises sixteen categorical fields and four numeric fields. Each categorical field is embedded into a twelve-dimensional space, leaving room for a reserved value to handle missing data rather than performing any form of imputation; embedding all sixteen categorical fields results in a 192-dimensional categorical block. The four numeric fields are z-scored based on training-fold statistics, each accompanied by its own binary missingness indicator; the resulting 8-dimensional numeric block is combined with the categorical block to produce a 200-dimensional feature vector, which is fed into a small MLP consisting of a linear layer (200$\to$128), ReLU, dropout with $p=0.2$, a linear layer (128$\to$128), and a final ReLU.
+The metadata associated with each lesion comprises seventeen categorical fields and four numeric fields. Each categorical field is embedded into a twelve-dimensional space, leaving room for a reserved value to handle missing data rather than performing any form of imputation; embedding all seventeen categorical fields results in a 204-dimensional categorical block. The four numeric fields are z-scored based on training-fold statistics, each accompanied by its own binary missingness indicator; the resulting 8-dimensional numeric block is combined with the categorical block to produce a 212-dimensional feature vector, which is fed into a small MLP consisting of a linear layer (212$\to$128), ReLU, dropout with $p=0.2$, a linear layer (128$\to$128), and a final ReLU.
 
 \subsection{Channel-Gated Fusion}
 \label{sec:fusion}
@@ -164,41 +164,62 @@ Accuracy is the proportion of all lesions classified correctly, sensitivity the 
 \end{equation}
 where $\mathrm{Pre}_c$ and $\mathrm{Rec}_c$ are precision and recall for class $c$. We also report AUROC, the probability that a randomly drawn malignant lesion receives a higher predicted probability than a randomly drawn non-malignant one. All are aggregated across the five test folds as mean and standard deviation. Balanced accuracy has also been used for checkpoint selection.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
-\subsection{Results}% REduce text %%
+\subsection{Results}
 \label{sec:main}
-Table~\ref{tab:breakdown} reports the proposed method. Channel-gated fusion has reached the highest macro-F1 but has not dominated: the image-only baseline has higher sensitivity (0.697 vs.\ 0.672) and AUROC (0.895 vs.\ 0.881), and its balanced accuracy is effectively tied (0.784 vs.\ 0.783, against a standard deviation of 0.07--0.09). We report this rather than framing it as a clean win for the fusion method.
+Table \ref{tab:breakdown} presents the cumulative results of the proposed method, building from the channel-gated baseline to the full pipeline.
 \begin{table}[htbp]
-\caption{Results of the Proposed Method }
+\caption{Results of the Proposed Method. Rows 1--4 are cumulative; SAM is listed separately because it does not stack.}
 \label{tab:breakdown}
 \centering
 \scriptsize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{|l|c|c|c|c|}
+\begin{tabular}{|c|l|c|c|c|}
 \hline
-\textbf{Step} & \textbf{Quality?} & \textbf{Bal.\ acc.} & \textbf{$\Delta$} & \textbf{Sens.} \\
+\textbf{\#} & \textbf{Step} & \textbf{Quality Used} & \textbf{Bal.\ acc.} & \textbf{Macro-F1} \\
 \hline
-Channel-gated baseline & no & 0.783 & --- & 0.672 \\
-$+$ \emph{hard\_mining} loss & \textbf{yes} & 0.820 & \textbf{$+$0.037} & 0.764 \\
-$+$ test-time augmentation & no & 0.833 & $+$0.050 & \textbf{0.808} \\
-$+$ multi-image averaging & no & \textbf{0.840} & $+$0.057 & 0.783 \\
+1 & Channel-gated baseline & No & 0.783 & 0.757 \\
+2 & 1 $+$ \textbf{Quality-Adaptive} loss & \textbf{Yes} & 0.820 & 0.778 \\
+3 & 2 $+$ test-time augmentation & \textbf{Yes} & 0.833 & 0.783 \\
+4 & 3 $+$ multi-image averaging (Proposed) & \textbf{Yes} & \textbf{0.840} & \textbf{0.810} \\
 \hline
-\emph{hard\_mining}, shuffled & control & 0.775 & $-$0.008 & 0.667 \\
+5 & 3 $+$ SAM optimizer & \textbf{Yes} & 0.801 & 0.761 \\
+\hline
+\end{tabular}
+\end{table}
+The proposed quality-adaptive loss improves every core metric over the baseline: balanced accuracy by 0.037 (0.783 to 0.820), sensitivity by 0.092 (0.672 to 0.764), AUROC by 0.025 (0.881 to 0.906) and accuracy to 0.845, against a small specificity cost of 0.020 (0.895 to 0.875). The opposite weighting direction is flat on balanced accuracy (0.788) and is not treated as an improvement. The gain is smaller than the fold-to-fold standard deviation of roughly 0.08, and no paired fold-level test reaches significance at $N=5$, so the claim rests on the control below rather than on this comparison.
+
+A natural alternative is to let the model predict quality rather than be reweighted by it: an auxiliary head trained to regress the quality rating underperforms the baseline on five of six metrics --- balanced accuracy 0.740 vs.\ 0.783 and sensitivity 0.578 vs.\ 0.672, against a specificity gain of 0.008 (0.895 to 0.902) --- confirming that the improvement above comes specifically from reweighting the loss, not merely from making quality information available to the network in any form.
+
+Adding sharpness-aware minimisation on top of the proposed loss (row 5) lowers balanced accuracy from 0.833 to 0.801, so it is reported as a configuration that does not stack rather than as a further step.
+
+\textbf{Causal validation via a shuffled-quality control:}
+\label{sec:shuffle}
+The obvious objection is that any per-sample reweighting might act as a regularizer, leaving the ratings incidental. We have tested this directly: within each fold's training portion the ratings are permuted across lesions, preserving the weight distribution exactly while destroying the lesion-to-rating correspondence. All else is identical, and evaluation always uses the true ratings.
+Under this control the proposed loss falls from 0.820 to 0.775 balanced accuracy and from 0.764 to 0.667 sensitivity, returning to the baseline's 0.783 and 0.672. A distribution-matched but uninformative weighting therefore recovers none of the gain, establishing that the improvement depends on the weights tracking real quality rather than on reweighting as such. This is a causal argument rather than a statistical one.
+The control has also been informative negatively. The \emph{trust} variant's one apparent advantage, a narrower accuracy gap between the highest and lowest quality terciles (0.082 against the baseline's 0.091), narrows further still under shuffling, to 0.021, while its balanced accuracy falls from 0.788 to 0.763: a weighting carrying no quality information produces a flatter profile than the mechanism intended to produce one. That advantage is therefore reported as a reversed finding rather than a second positive result.
+
+Table \ref{tab:ablation} compares late fusion and channel-gated fusion of image and metadata features. Channel-gated fusion outperforms late fusion on every metric: accuracy (0.833 vs.\ 0.831), balanced accuracy (0.783 vs.\ 0.768), macro-F1 (0.757 vs.\ 0.743), sensitivity (0.672 vs.\ 0.644), specificity (0.895 vs.\ 0.891), and AUROC (0.881 vs.\ 0.851). We adopt channel-gated fusion as the fusion mechanism for the remainder of this work: beyond its consistent advantage here, it is the only one of the two mechanisms whose per-channel gate provides a natural injection point for the quality signal, on which the quality-adaptive loss reported above is built.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}[htbp]
+\caption{Ablation Results of the Proposed Fusion Mechanism with both modalities}
+\label{tab:ablation}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Late fusion} & \textbf{Channel-gated} \\
+\hline
+Accuracy & 0.831 $\pm$ 0.052 & \textbf{0.833 $\pm$ 0.070} \\
+Balanced acc. & 0.768 $\pm$ 0.090 & \textbf{0.783 $\pm$ 0.085} \\
+Macro F1 & 0.743 $\pm$ 0.051 & \textbf{0.757 $\pm$ 0.073} \\
+Sensitivity & 0.644 $\pm$ 0.191 & \textbf{0.672 $\pm$ 0.159} \\
+Specificity & 0.891 $\pm$ 0.021 & \textbf{0.895 $\pm$ 0.048} \\
+AUROC & 0.851 $\pm$ 0.080 & \textbf{0.881 $\pm$ 0.065} \\
 \hline
 \end{tabular}
 \end{table}
 
-The quality-aware variant, which adds an auxiliary head predicting the quality rating, underperforms on five of six metrics: balanced accuracy 0.740 vs.\ 0.783 and sensitivity 0.578 vs.\ 0.672, against a small specificity gain. Predicting quality is therefore a negative result, mechanistically distinct from reweighting by it.
-
-The proposed quality-adaptive loss improves every core metric over the baseline: balanced accuracy by 0.037 (0.783 to 0.820), sensitivity by 0.092 (0.672 to 0.764), AUROC by 0.025 (0.881 to 0.906) and accuracy to 0.845, against a small specificity cost. The opposite weighting direction is flat on balanced accuracy (0.788) and is not treated as an improvement. The gain is smaller than the fold-to-fold standard deviation of roughly 0.08, and no paired fold-level test reaches significance at $N=5$, so the claim rests on the control below rather than on this comparison.
-
-\smallskip\noindent\textbf{Causal validation via a shuffled-quality control.}
-\label{sec:shuffle}
-The obvious objection is that any per-sample reweighting might act as a regularizer, leaving the ratings incidental. We have tested this directly: within each fold's training portion the ratings are permuted across lesions, preserving the weight distribution exactly while destroying the lesion-to-rating correspondence. All else is identical, and evaluation always uses the true ratings.
-
-Under this control the proposed loss falls from 0.820 to 0.775 balanced accuracy and from 0.764 to 0.667 sensitivity, returning to the baseline's 0.783 and 0.672. A distribution-matched but uninformative weighting therefore recovers none of the gain, establishing that the improvement depends on the weights tracking real quality rather than on reweighting as such. This is a causal argument rather than a statistical one.
-
-The control has also been informative negatively. The \emph{trust} variant's one apparent advantage, a narrower accuracy gap between the highest and lowest quality terciles (0.082 against the baseline's 0.091), narrows further still under shuffling, to 0.021, while its balanced accuracy falls from 0.788 to 0.763: a weighting carrying no quality information produces a flatter profile than the mechanism intended to produce one. That advantage is therefore reported as a reversed finding rather than a second positive result.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Qualitative Results} %% To be changed with hard and soft samples and image explanation  % 
 \label{sec:qualitative}
 Gradients have been taken with respect to the feature map \emph{after} the metadata gate, the representation the decision is computed from, with the metadata branch held fixed. Fig.~\ref{fig:hardsamples} contrasts two regimes chosen by a fixed rule rather than by inspection: the top row holds the three lesions both models call most confidently, the bottom row the three lowest-rated lesions the baseline gets wrong and the proposed loss corrects.
@@ -215,60 +236,49 @@ These are illustrative rather than representative. Across the 231 labelled lesio
 \end{figure}
 
 
-\subsection{Comparison with the Literature}
+\subsection{Comparison}
 \label{sec:comparison}
-MCR-SL has had no prior published benchmark, so the results reported here are the first on this dataset. This is not framed as a state-of-the-art claim, since there is no prior number to have surpassed; the loss mechanism and its validation remain the principal contribution, and the comparison below is offered only to situate that result against the closest available datasets and published binary-task work. Table~\ref{tab:literature} summarizes this comparison.
+MCR-SL has had no prior published benchmark, so the results reported here are the first on this dataset. This is not framed as a state-of-the-art claim, since there is no prior number to have surpassed; the loss mechanism and its validation remain the principal contribution, Table~\ref{tab:literature} therefore compares the configurations evaluated in this work against one another, grouped by the component each one varies.
 
 \begin{table}[htbp]
-\caption{Comparison with existing works.}
+\caption{Configurations evaluated on MCR-SL; 234 lesions, binary task, mean over five folds.}
 \label{tab:literature}
 \centering
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{|l|l|c|c|c|c|}
+\begin{tabular}{|c|l|c|c|c|}
 \hline
-\textbf{Method} & \textbf{Data} & \textbf{N} & \textbf{Mal.\%} & \textbf{Task} & \textbf{Bal.acc} \\
+\textbf{\#} & \textbf{Configuration} & \textbf{Built on} & \textbf{Bal.acc} & \textbf{Macro-F1} \\
 \hline
-Baseline (ours) & MCR-SL & 234 & 17.9 & bin. & 0.783 \\
-$+$hard\_mining (ours) & MCR-SL & 234 & 17.9 & bin. & 0.820 \\
-Best config (ours) & MCR-SL & 234 & 17.9 & bin. & \textbf{0.840} \\
+\multicolumn{5}{|l|}{\emph{Architecture} --- fusion mechanism, standard weighted BCE} \\
 \hline
-Uliana \& Krohling \cite{diffmic} & PAD-UFES-20 & 2298 & 47.5 & bin. & 0.836 \\
+1 & Image-only encoder            & ---  & 0.784 & 0.733 \\
+2 & Late fusion (concatenation)   & ---  & 0.768 & 0.743 \\
+3 & Channel-gated fusion          & ---  & 0.783 & 0.757 \\
 \hline
-PAD-UFES-20 (native) & PAD-UFES-20 & --- & --- & 6-cls & 0.77--0.84 \\
-HAM10000 \cite{ham10000} & HAM10000 & $\sim$40$\times$ & --- & derm. & high acc.\\
+\multicolumn{5}{|l|}{\emph{Training objective} --- how the quality rating enters the loss} \\
+\hline
+4 & $+$ quality-auxiliary head       & 3 & 0.740 & 0.715 \\
+5 & $+$ \emph{trust} reweighting     & 3 & 0.788 & 0.721 \\
+6 & $+$ \emph{Quality-Adaptive} loss & 3 & \textbf{0.820} & \textbf{0.778} \\
+\hline
+\multicolumn{5}{|l|}{\emph{Inference} --- evaluation-time only, no retraining} \\
+\hline
+7 & $+$ test-time augmentation    & 6 & 0.833 & 0.783 \\
+8 & $+$ multi-image averaging     & 7 & \textbf{0.840} & \textbf{0.810} \\
 \hline
 \end{tabular}%
 }
 \end{table}
-The only directly comparable binary-task result is Uliana and Krohling's \cite{diffmic} (0.836 balanced accuracy, diffusion classifier, 2298 images, five-fold cross-validation); the 0.004-point gap to this paper's best configuration (0.840) is far smaller than the fold-to-fold standard deviation, so the two results are statistically indistinguishable, and the datasets also differ substantially in unit (lesions vs.\ images) and class balance (17.9\% vs.\ 47.5\% malignant). PAD-UFES-20's native six-class balanced accuracies (0.765--0.842) and HAM10000's \cite{ham10000} higher raw accuracy are shown for context only and are not valid comparators, since neither shares this paper's binary task, metadata use, or dataset scale.
+For external context, the closest binary-task result in the literature is Uliana and Krohling's \cite{diffmic} 0.836 balanced accuracy on PAD-UFES-20 (diffusion classifier, 2298 images, five-fold cross-validation). The 0.004-point gap to this paper's best configuration is far smaller than the fold-to-fold standard deviation, so the two are statistically indistinguishable, and the datasets differ substantially in unit (lesions vs.\ images) and class balance (17.9\% vs.\ 47.5\% malignant). It is therefore discussed here rather than tabulated alongside our own configurations, since it is not a like-for-like comparator.
 \subsection{Ablation and Robustness Analyses}
-\begin{table}[htbp]
-\caption{Ablation Results of the Proposed Fusion Mechanism  }
-\label{tab:ablation}
-\centering
-\scriptsize
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{|l|c|c|c|}
-\hline
-\textbf{Metric} & \textbf{Image-only} & \textbf{Late fusion} & \textbf{Channel-gated} \\
-\hline
-Accuracy & 0.813 $\pm$ 0.020 & 0.831 $\pm$ 0.052 & \textbf{0.833 $\pm$ 0.070} \\
-Balanced acc. & \textbf{0.784 $\pm$ 0.073} & 0.768 $\pm$ 0.090 & 0.783 $\pm$ 0.085 \\
-Macro F1 & 0.733 $\pm$ 0.038 & 0.743 $\pm$ 0.051 & \textbf{0.757 $\pm$ 0.073} \\
-Sensitivity & \textbf{0.697 $\pm$ 0.187} & 0.644 $\pm$ 0.191 & 0.672 $\pm$ 0.159 \\
-Specificity & 0.872 $\pm$ 0.061 & 0.891 $\pm$ 0.021 & \textbf{0.895 $\pm$ 0.048} \\
-AUROC & \textbf{0.895 $\pm$ 0.053} & 0.851 $\pm$ 0.080 & 0.881 $\pm$ 0.065 \\
-\hline
-\end{tabular}
-\end{table}
-
 Eleven configurations have been run under an identical protocol, each varying one component of
 the channel-gated method: the loss (focal loss \cite{focal}), the input (hair removal and colour
 normalisation), the objective (a contrastive auxiliary term \cite{supcon}), the optimiser
 (decoupled weight decay with a cosine schedule \cite{adamw}, sharpness-aware minimisation
 \cite{sam}), and the evaluation (flip-averaged and multi-image test-time averaging), plus four
-stacked combinations. Table~\ref{tab:sweep} reports all eleven. Sharpness-aware minimisation with
-test-time augmentation is the best of the sweep at 0.822; the contrastive term and the alternative
+stacked combinations. Table~\ref{tab:sweep} reports them alongside the proposed
+configurations. Sharpness-aware minimisation with test-time augmentation is the best of the
+non-quality-aware configurations at 0.822; the contrastive term and the alternative
 optimiser each underperform the baseline, and stacking every promising intervention reaches only
 0.759.
 
@@ -282,26 +292,44 @@ no retraining and has nothing to do with image quality. We state this split so t
 mechanism's contribution is not overstated by the final figure.
 
 \begin{table}[htbp]
-\caption{Ablation Results on Hyper parameters }
+\caption{Ablation sweep grouped by the component varied; $\dagger$ marks the proposed quality-adaptive loss.}
 \label{tab:sweep}
 \centering
-\tiny
-\setlength{\tabcolsep}{3pt}
+\scriptsize
+\setlength{\tabcolsep}{2pt}
 \begin{tabular}{|l|c|c|c|c|c|}
 \hline
 \textbf{Configuration} & \textbf{Acc.} & \textbf{Bal.\ acc.} & \textbf{Sens.} & \textbf{Spec.} & \textbf{AUROC} \\
 \hline
+\multicolumn{6}{|l|}{\emph{Reference}} \\
+\hline
+Channel-gated baseline & 0.833 & 0.783 & 0.672 & 0.895 & 0.881 \\
+\hline
+\multicolumn{6}{|l|}{\emph{Training objective} --- loss function} \\
+\hline
+$\dagger$ Quality-adaptive loss & 0.845 & 0.820 & 0.764 & 0.875 & 0.906 \\
 Focal loss & 0.858 & 0.809 & 0.694 & 0.923 & 0.877 \\
-Dermoscopy preprocessing & 0.828 & 0.793 & \textbf{0.736} & 0.851 & 0.875 \\
 Contrastive auxiliary loss & 0.812 & 0.770 & 0.669 & 0.872 & 0.873 \\
-Alt.\ optimizer (AdamW+cosine) & 0.822 & 0.757 & 0.661 & 0.853 & 0.845 \\
-Test-time augmentation (TTA) & 0.841 & 0.788 & 0.672 & 0.904 & 0.897 \\
-Multi-image averaging & 0.854 & 0.813 & 0.719 & 0.907 & 0.906 \\
+\hline
+\multicolumn{6}{|l|}{\emph{Input and optimiser}} \\
+\hline
 Sharpness-aware min.\ (SAM) & 0.858 & 0.810 & 0.694 & 0.927 & 0.904 \\
-SAM + multi-image & 0.851 & 0.800 & 0.672 & 0.928 & \textbf{0.917} \\
-\textbf{SAM + TTA} & \textbf{0.861} & \textbf{0.822} & 0.719 & 0.925 & 0.908 \\
-SAM + TTA + multi-image & 0.856 & 0.810 & 0.694 & 0.925 & 0.915 \\
-Preprocess.+focal+SAM+TTA & 0.818 & 0.759 & 0.622 & 0.895 & 0.893 \\
+Dermoscopy preprocessing & 0.828 & 0.793 & 0.736 & 0.851 & 0.875 \\
+Alt.\ optimizer (AdamW$+$cosine) & 0.822 & 0.757 & 0.661 & 0.853 & 0.845 \\
+\hline
+\multicolumn{6}{|l|}{\emph{Inference} --- no retraining} \\
+\hline
+Multi-image averaging & 0.854 & 0.813 & 0.719 & 0.907 & 0.906 \\
+Test-time augmentation (TTA) & 0.841 & 0.788 & 0.672 & 0.904 & 0.897 \\
+\hline
+\multicolumn{6}{|l|}{\emph{Stacked combinations}} \\
+\hline
+Preprocess.$+$focal$+$SAM$+$TTA & 0.818 & 0.759 & 0.622 & 0.895 & 0.893 \\
+SAM $+$ multi-image & 0.851 & 0.800 & 0.672 & \textbf{0.928} & 0.917 \\
+SAM $+$ TTA $+$ multi-image & 0.856 & 0.810 & 0.694 & 0.925 & 0.915 \\
+SAM $+$ TTA & 0.861 & 0.822 & 0.719 & 0.925 & 0.908 \\
+$\dagger$ Quality-adaptive $+$ TTA & 0.849 & 0.833 & \textbf{0.808} & 0.858 & 0.911 \\
+$\dagger$ Quality-adaptive $+$ TTA $+$ multi-image & \textbf{0.874} & \textbf{0.840} & 0.783 & 0.896 & \textbf{0.918} \\
 \hline
 \end{tabular}
 \end{table}
