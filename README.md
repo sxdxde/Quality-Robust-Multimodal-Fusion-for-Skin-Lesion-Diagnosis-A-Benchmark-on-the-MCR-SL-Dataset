@@ -1,4 +1,4 @@
-# Quality-Adaptive Loss Reweighting for Robust Skin Lesion Classification
+# Learning with Quality-Adaptive Loss Reweighting for Skin Lesion Classification
 
 **First published benchmark on the MCR-SL dataset — and a loss function that learns *harder* from the images experts rated *worse*.**
 
